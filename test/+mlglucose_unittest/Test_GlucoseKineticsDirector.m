@@ -11,7 +11,6 @@ classdef Test_GlucoseKineticsDirector < matlab.unittest.TestCase
  	%% It was developed on Matlab 9.2.0.538062 (R2017a) for MACI64.  Copyright 2017 John Joowon Lee.
  	
 	properties
- 		registry
         sessd
         sessionPath = '/data/nil-bluearc/raichle/PPGdata/jjlee2/HYGLY28'
  		testObj
@@ -19,35 +18,23 @@ classdef Test_GlucoseKineticsDirector < matlab.unittest.TestCase
  	end
 
 	methods (Test)
-		function test_ctor(this)
- 			glc = FDGKineticsWholebrain.godo2(this.sessd);
-            glc = glc.aparcAsegBinarized_op_fdg;
-            glc.plot;
+        function test_constructCmrglc_Stan(this)
+            import mlglucose.*;
+            fdg  = [];
+            rois = [];
+            bldr = FdgKineticsBuilderWithStan(fdg, rois);
+            dtor = GlucoseKineticsDirector.createKinetics(bldr);
+            dtor.constructCmrglc;
+            this.verifyEqual(bldr.paramEstimate, nan);
         end
-        function test_iterator(this)
-            gkdIterator = this.testObj.iterator;
-            iteration = 0;
-            prods = {};
-            while (gkdIterator.hasNext)
-                aDirector = gkdIterator.next;
-                aDirector = aDirector.constructRates;
-                prods{iteration} = aDirector.product; %#ok<AGROW>
-                iteration = iteration + 1;
-            end
-            this.verifyEqual(iteration, 1);
-            this.verifyEqual(length(prods), 1);
-        end
-        function test_constructRates(this)
-            this.testObj = this.testObj.constructRates;
-        end
-        function test_constructPhysiological(this)
-            this.testObj = this.testObj.constructPhysiological;
-        end
-        function test_diagnose(this)
-        end
-        function test_plot(this)
-        end
-        function test_report(this)
+        function test_contructCmrglc_Bretthorst(this)
+            import mlglucose.*;
+            fdg  = [];
+            rois = [];
+            bldr = FdgKineticsBuilderWithBretthorst(fdg, rois);
+            dtor = GlucoseKineticsDirector.createKinetics(bldr);
+            dtor.constructCmrglc;
+            this.verifyEqual(bldr.paramEstimate, nan);
         end
 	end
 
@@ -62,19 +49,8 @@ classdef Test_GlucoseKineticsDirector < matlab.unittest.TestCase
             scanb  = mlsiemens.BiographMMRBuilder('sessionData', this.sessd, ...
                 'roisBuilder', roisb, ...
                 'blindedData', blindd);
-            wellb  = mlcapintec.CapracBuilder('sessionData', this.sessd);  
-            twilb  = mlswisstrace.TwiliteBuilder('sessionData', this.sessd);    
+            wellb  = mlcapintec.CapracBuilder('sessionData', this.sessd);   
             solver = mlbayesian.BretthorstMcmc;
-            
-            % [15O]
-            import mloxygen.*;
-            solver.model = OyxgenModel( ...
-                'scannerBuilder', scanb, 'aifBuilder', twilb, 'blindedData', blindd, ...
-                'solverClass', 'mlbayesian.BretthorstMcmc', ...
-                'sessionData', this.sessd);
-            oxyd = OxygenKineticsDirector( ...
-                'oxygenBldr', OxygenKineticsBuilder('solver', solver), ...
-                'roisBldr', roisb);
             
             % [18F]DG
  			import mlglucose.*;
@@ -82,10 +58,7 @@ classdef Test_GlucoseKineticsDirector < matlab.unittest.TestCase
                 'scannerBuilder', scanb, 'aifBuilder', wellb, 'blindedData', blindd, ...
                 'solverClass', 'mlbayesian.BretthorstMcmc', ...
                 'sessionData', this.sessd);  
-            this.testObj = GlucoseKineticsDirector( ...
-                'oxygenDir', oxyd, ...
-                'glucoseBldr', F18DeoxyGlucoseKineticsBuilder('solver', solver), ...
-                'roisBldr', roisb);
+            this.testObj = GlucoseKineticsDirector.CreateKinetics;
  		end
 	end
 
