@@ -14,7 +14,6 @@ classdef Test_GlucoseKineticsDirector < matlab.unittest.TestCase
         sessd
         sessionPath = '/data/nil-bluearc/raichle/PPGdata/jjlee2/HYGLY28'
  		testObj
-        vnumber = 1
  	end
 
 	methods (Test)
