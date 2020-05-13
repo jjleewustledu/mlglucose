@@ -68,6 +68,7 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
             for vxl = 1:this.Nroi
                 try
                     tic
+                    fprintf('mlglucose.ImagingHuang1980.solve():  vxl->%i this.Nroi->%i\n', vxl, this.Nroi)
                     this.measurement = fdg_img_2d(vxl, :);
                     this.model = mlglucose.Huang1980Model( ...
                         'map', map, ...

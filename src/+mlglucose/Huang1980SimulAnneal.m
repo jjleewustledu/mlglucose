@@ -11,7 +11,7 @@ classdef Huang1980SimulAnneal < mloptimization.SimulatedAnnealing & mlglucose.Hu
         ks0
         ks_lower
         ks_upper
-        quiet = true
+        quiet = false
         v1                   % blood volume fraction
         visualize = false
         visualize_anneal = false
@@ -172,7 +172,6 @@ classdef Huang1980SimulAnneal < mloptimization.SimulatedAnnealing & mlglucose.Hu
             
             this.results_ = struct('ks0', this.ks0, 'ks', ks_, 'sse', sse, 'exitflag', exitflag, 'output', output); 
             if ~this.quiet
-                disp(this)
                 fprintfModel(this)
             end
             if this.visualize
