@@ -5,7 +5,7 @@ classdef (Abstract) Huang1980Strategy
  	%  was created 10-Apr-2020 17:38:15 by jjlee,
  	%  last modified $LastChangedDate$ and placed into repository /Users/jjlee/MATLAB-Drive/mlglucose/src/+mlglucose.
  	%% It was developed on Matlab 9.7.0.1319299 (R2019b) Update 5 for MACI64.  Copyright 2020 John Joowon Lee.
- 	
+    
 	properties (Abstract)
         artery_interpolated
         context

@@ -5,7 +5,12 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
  	%  was created 28-Apr-2020 23:53:00 by jjlee,
  	%  last modified $LastChangedDate$ and placed into repository /Users/jjlee/MATLAB-Drive/mlglucose/src/+mlglucose.
  	%% It was developed on Matlab 9.7.0.1319299 (R2019b) Update 5 for MACI64.  Copyright 2020 John Joowon Lee.
- 	
+ 	 	
+	properties (Constant)
+        MAX_NORMAL_BACKGROUND = 20 % Bq/mL
+        MIN_V1 = 0.001; % fraction
+    end
+    
 	properties
         artery_plasma_interpolated
         fdg
@@ -70,41 +75,53 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
                     tic
                     fprintf('mlglucose.ImagingHuang1980.solve():  vxl->%i this.Nroi->%i\n', vxl, this.Nroi)
                     this.measurement = fdg_img_2d(vxl, :);
-                    this.model = mlglucose.Huang1980Model( ...
-                        'map', map, ...
-                        'times_sampled', this.times_sampled, ...
-                        'v1', v1_img_1d(vxl), ...
-                        'artery_interpolated', this.artery_plasma_interpolated, ...
-                        'glc', this.glc, ...
-                        'hct', this.hct, ...
-                        'LC', this.LC, ...
-                        'convert_wb2plasma', false);
-                    strategy = mlglucose.Huang1980SimulAnneal('context', this);
-                    strategy = solve(strategy); 
-                    map_k1 = map('k1');
-                    map_k2 = map('k2');
-                    map_k3 = map('k3');
-                    map_k4 = map('k4');
-                    map_k1.init = k1(strategy);
-                    map_k2.init = k2(strategy);
-                    map_k3.init = k3(strategy);
-                    map_k4.init = k4(strategy);
-                    ks_img_2d(vxl, 1) = map_k1.init;
-                    ks_img_2d(vxl, 2) = map_k2.init;
-                    ks_img_2d(vxl, 3) = map_k3.init;
-                    ks_img_2d(vxl, 4) = map_k4.init; 
-                    map('k1') = map_k1;
-                    map('k2') = map_k2;
-                    map('k3') = map_k3;
-                    map('k4') = map_k4;                    
+                    the_v1 = v1_img_1d(vxl);
+                    if this.sufficientData(the_v1, this.measurement)
+                        this.model = mlglucose.Huang1980Model( ...
+                            'map', map, ...
+                            'times_sampled', this.times_sampled, ...
+                            'v1', the_v1, ...
+                            'artery_interpolated', this.artery_plasma_interpolated, ...
+                            'glc', this.glc, ...
+                            'hct', this.hct, ...
+                            'LC', this.LC, ...
+                            'convert_wb2plasma', false);
+                        strategy = mlglucose.Huang1980SimulAnneal('context', this);
+                        strategy = solve(strategy);
+                        
+                        % store latest solutions
+                        ks_img_2d(vxl, 1) = k1(strategy);
+                        ks_img_2d(vxl, 2) = k2(strategy);
+                        ks_img_2d(vxl, 3) = k3(strategy);
+                        ks_img_2d(vxl, 4) = k4(strategy);
+                        
+                        % use latest solutions for initial conditions for solving neighboring voxels
+                        map_k1 = map('k1'); % cache mapped struct
+                        map_k2 = map('k2');
+                        map_k3 = map('k3');
+                        map_k4 = map('k4');                        
+                        map_k1.init = ks_img_2d(vxl, 1)*(1 + 0.01*randn()); % cached struct.init := latest solutions with jitter
+                        map_k2.init = ks_img_2d(vxl, 2)*(1 + 0.01*randn());
+                        map_k3.init = ks_img_2d(vxl, 3)*(1 + 0.01*randn());
+                        map_k4.init = ks_img_2d(vxl, 4)*(1 + 0.01*randn());
+                        map('k1') = map_k1; % update mapped struct with adjusted cache
+                        map('k2') = map_k2;
+                        map('k3') = map_k3;
+                        map('k4') = map_k4; 
+                    
+                        % else ks_img_2d retains zeros                        
+                    end                    
                     toc
                 catch ME
-                    handexcept(ME)
-                    %handwarning(ME)
+                    %handexcept(ME)
+                    handwarning(ME)
                 end
             end
             
             this.ks = this.invProjectedKsArray(ks_img_2d);
+        end
+        function tf = sufficientData(this, v1, measurement)
+            tf = v1 > this.MIN_V1 && mean(measurement) > this.MAX_NORMAL_BACKGROUND;
         end
     end
 
@@ -150,7 +167,6 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
             cbvic = mlfourd.ImagingContext2(ipr.cbv);
             this.v1 = cbvic/100;
             this.roi = mlfourd.ImagingContext2(ipr.roi);
-            this.roi = this.roi.binarized;
             this.roibin = this.roi.fourdfp.img > 0;
             this.fdg = this.masked(this.fdg);
             this.Nroi = dipsum(this.roibin);
@@ -169,8 +185,8 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
                 cube(this.roibin) = arr(:,ik); 
                 img(:,:,:,ik) = cube;
             end
-            fp = strrep(this.fdg.fileprefix, 'fdg', sprintf('ks_%s_', this.roi.fileprefix));
-            ic = mlfourd.ImagingContext2(img, 'filename', [fp '.4dfp.hdr']);
+            fp = strrep(this.fdg.fileprefix, 'fdg', 'ks'); % sprintf('ks_%s_', this.roi.fileprefix));
+            ic = mlfourd.ImagingContext2(img, 'filename', [fp '_' this.roi.fileprefix '.4dfp.hdr']);
         end
         function ic = masked(this, ic)
             %% retains original fileprefix.

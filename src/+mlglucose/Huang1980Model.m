@@ -173,7 +173,7 @@ classdef Huang1980Model
             m = containers.Map;
             m('k1')  = struct('min',  0.001, 'max', 0.5,  'init', 0.03,   'sigma', 0.02);
             m('k2')  = struct('min',  eps,   'max', 0.1,  'init', 0.003,  'sigma', 0.01);
-            m('k3')  = struct('min',  eps,   'max', 0.1,  'init', 0.003,  'sigma', 0.002);
+            m('k3')  = struct('min',  eps,   'max', 0.05, 'init', 0.003,  'sigma', 0.002);
             m('k4')  = struct('min',  eps,   'max', 0.01, 'init', 0.0003, 'sigma', 0.001);
         end
         function rop  = rbc_over_plasma(t)

@@ -140,9 +140,9 @@ classdef Huang1980SimulAnneal < mloptimization.SimulatedAnnealing & mlglucose.Hu
         end
         function        saveas(this, fn)
             save(fn, this);
-        end 
+        end
         function this = solve(this, varargin)
-            import mlglucose.Huang1980SimulAnneal.loss_function            
+            import mlglucose.Huang1980SimulAnneal.loss_function   
             options_fmincon = optimoptions('fmincon', ...
                 'FunctionTolerance', 1e-9, ...
                 'OptimalityTolerance', 1e-9);
