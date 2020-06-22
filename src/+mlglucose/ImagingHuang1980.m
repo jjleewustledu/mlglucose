@@ -165,6 +165,9 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
             artery_interpolated = pchip(0:length(ipr.artery_sampled)-1, ipr.artery_sampled, t);
             this.artery_plasma_interpolated = wb2plasma(artery_interpolated, this.hct, t);    
             cbvic = mlfourd.ImagingContext2(ipr.cbv);
+            if dipisnan(cbvic)
+                error('mlglucose:RuntimeError', 'ImagingHuang1980 found dipisnan(cbvic)')
+            end
             this.v1 = cbvic/100;
             this.roi = mlfourd.ImagingContext2(ipr.roi);
             this.roibin = this.roi.fourdfp.img > 0;
