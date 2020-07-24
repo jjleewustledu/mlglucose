@@ -306,19 +306,19 @@ classdef Test_Huang1980 < matlab.unittest.TestCase
             tic
             o = o.solve();
             toc
-            this.verifyEqual([o.k1() o.k2() o.k3() o.k4()], [0.013924968577415   0.000455932091465   0.000586501865778   0.000000000386704], 'RelTol', 1e-2)
+            this.verifyEqual([o.k1() o.k2() o.k3() o.k4()], [0.013943826385222   0.000449068811131   0.000586885759740   0.000000000000035], 'RelTol', 1e-2)
             
             % Model:
-            % 	k1 = 0.013925
-            % 	k2 = 0.000456
+            % 	k1 = 0.013944
+            % 	k2 = 0.000449
             % 	k3 = 0.000587
             % 	k4 = 0.000000
             % 	sigma0 = 0.050000
             % 	map('k1') => min = 0.001, max = 0.5, init = 0.03, sigma = 0.02
             % 	map('k2') => min = 2.22044604925031e-16, max = 0.1, init = 0.003, sigma = 0.01
-            % 	map('k3') => min = 2.22044604925031e-16, max = 0.1, init = 0.003, sigma = 0.002
+            % 	map('k3') => min = 2.22044604925031e-16, max = 0.05, init = 0.003, sigma = 0.002
             % 	map('k4') => min = 2.22044604925031e-16, max = 0.01, init = 0.0003, sigma = 0.001
-            % Elapsed time is 22.628439 seconds.
+            % Elapsed time is 21.416997 seconds.
         end
         function test_v1ic(this)
             this.verifyEqual(size(this.v1ic), [256 256 256])
@@ -345,9 +345,9 @@ classdef Test_Huang1980 < matlab.unittest.TestCase
             this.map1('k3') = struct('min',    0.01, 'max', 1,    'init', 0.1*rand());
             this.map1('k4') = struct('min',    5e-5, 'max', 5e-3, 'init', 5e-4*rand());
             this.v1ic = mlfourd.ImagingContext2([this.cbvfp '.4dfp.hdr'])/100;
-            this.Laccumb = mlfourd.ImagingFormatContext('wmparc.4dfp.hdr');
+            this.Laccumb = mlfourd.ImagingFormatContext('wmparc_222.4dfp.hdr');
             this.Laccumb.img = this.Laccumb.img == 26;
-            this.Laccumb = mlfourd.ImagingContext2(this.Laccumb, 'fileprefix', 'wmparc26');
+            this.Laccumb = mlfourd.ImagingContext2(this.Laccumb, 'fileprefix', 'wmparc_222_26');
  			
 %            devkit = mlsiemens.BiographMMRKit.createFromSession(this.sesd);
 %            this.testObj_ = mlglucose.Huang1980.createFromDeviceKit(devkit, 'cbv', 100*this.v1);

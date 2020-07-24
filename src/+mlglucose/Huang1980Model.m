@@ -193,7 +193,10 @@ classdef Huang1980Model
     end
 
 	methods		  
- 		function this = Huang1980Model(varargin)            
+ 		function this = Huang1980Model(varargin)
+            
+            import mlglucose.Huang1980Model.wb2plasma
+                
             ip = inputParser;
             ip.KeepUnmatched = true;
             addParameter(ip, 'map', this.preferredMap(), @(x) isa(x, 'containers.Map'))
@@ -224,7 +227,6 @@ classdef Huang1980Model
             this.LC = ipr.LC;
             
             if ipr.convert_wb2plasma
-                import mlglucose.Huang1980Model.wb2plasma
                 t = 0:this.times_sampled(end);
                 this.artery_interpolated = wb2plasma(this.artery_interpolated, this.hct, t);
             end
@@ -233,10 +235,11 @@ classdef Huang1980Model
         function fdg  = solution_simulated(this, varargin)
             ip = inputParser;
             addRequired(ip, 'ks', @isnumeric)
+            addOptional(ip, 'v1', this.v1, @isnumeric)
             parse(ip, varargin{:})
             ipr = ip.Results;
             
-            fdg = mlglucose.Huang1980Model.sampled(ipr.ks, this.v1, this.artery_interpolated, this.times_sampled);
+            fdg = mlglucose.Huang1980Model.sampled(ipr.ks, ipr.v1, this.artery_interpolated, this.times_sampled);
         end
     end 
 

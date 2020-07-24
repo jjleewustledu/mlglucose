@@ -14,7 +14,7 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
             %  @param fdg is numeric, default from devkit.
             %  @param solver is in {'nest' 'simulanneal' 'hmc' 'lm' 'bfgs'}, default := 'simulanneal'.
             %  @param map, default := mlglucose.Huang1980Model.preferredMap().
-            %  @param v1 is numeric.
+            %  @param cbv is numeric or understood by mlfourd.ImagingContext2.
             %  @param times_sampled non-uniformly scheduled by the time-resolved PET reconstruction.
             %  @param artery_interpolated, default from devkit.
             %  @param glc is numeric, default from devkit.
@@ -33,7 +33,7 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
             addRequired(ip, 'devkit', @(x) isa(x, 'mlpet.IDeviceKit'))
             addParameter(ip, 'fdg', [], @isnumeric)
             addParameter(ip, 'roi', 'brain.4dfp.hdr', @(x) isa(x, 'mlfourd.ImagingContext2'))
-            addParameter(ip, 'cbv', [], @(x) isnumeric(x) || isa(x, 'mlfourd.ImagingContext2'))
+            addParameter(ip, 'cbv', [])
             parse(ip, devkit, varargin{:})
             ipr = ip.Results;
             

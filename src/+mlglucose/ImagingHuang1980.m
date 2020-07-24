@@ -13,16 +13,22 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
     
 	properties
         artery_plasma_interpolated
+        blur
         fdg
         glc
         hct
         ks
         LC
+        meanAbsError
         measurement % expose for performance when used by mlglucose.Huang1980Strategy
         model       %
         Nroi
+        prediction
+        regionTag
+        residual
         roi
         roibin
+        taus
  		times_sampled
         v1
     end
@@ -33,6 +39,7 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
             %  @param required devkit is mlpet.IDeviceKit.
             %  @param cbv is understood by mlfourd.ImagingContext2.
             %  @param roi is understood by mlfourd.ImagingContext2.
+            %  @param blur is numeric.
             
             import mlfourd.ImagingContext2
             import mlglucose.Huang1980.glcFromRadMeasurements
@@ -55,6 +62,7 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
             
             this = mlglucose.ImagingHuang1980( ...
                 'fdg', fdg, ...
+                'taus', scanner.taus, ...
                 'times_sampled', scanner.timesMid, ...
                 'artery_sampled', aif, ...
                 'glc', glcFromRadMeasurements(radm), ...
@@ -64,6 +72,68 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
     end
     
     methods
+        function this = ensureModel(this)
+            if isempty(this.model)                               
+                map = mlglucose.Huang1980Model.preferredMap();
+                this.model = mlglucose.Huang1980Model( ...
+                    'map', map, ...
+                    'times_sampled', this.times_sampled, ...
+                    'artery_interpolated', this.artery_plasma_interpolated, ...
+                    'glc', this.glc, ...
+                    'hct', this.hct, ...
+                    'LC', this.LC, ...
+                    'convert_wb2plasma', false);
+            end            
+        end
+        function ic = buildMeanAbsError(this)
+            if isempty(this.residual)
+                this.buildResidual()
+            end
+            assert(~isempty(this.taus))
+            this.meanAbsError = abs(this.residual);
+            this.meanAbsError = this.meanAbsError.timeAveraged('taus', this.taus);
+            this.meanAbsError.fileprefix = [this.fdg.fileprefix this.regionTag '_meanAbsError'];
+            ic = this.meanAbsError;
+        end
+        function ic = buildPrediction(this)
+            assert(~isempty(this.ks))
+            this.ensureModel()
+            
+            % initialize ifc from this.fdg
+            ifc = this.fdg.fourdfp;
+            ifc.fileprefix = [ifc.fileprefix this.regionTag '_predicted'];
+            sz = size(ifc);
+            ifc.img = zeros(sz);
+            
+            % represent prediction as voxels (x) times
+            img2d = zeros(this.Nroi, sz(4));
+            ks_ = zeros(this.Nroi,4);
+            for ik = 1:4                
+                rate = this.ks.fourdfp.img(:,:,:,ik);                
+                ks_(:, ik) = rate(this.roibin);
+            end
+            v1_ = this.v1.fourdfp.img(this.roibin);
+            for vxl = 1:this.Nroi
+                img2d(vxl,:) = this.model.solution_simulated(ks_(vxl,:), v1_(vxl));
+            end
+            
+            % embed prediction in R^3 (x) times
+            for t = 1:sz(4)
+                frame = zeros(sz(1:3));
+                frame(this.roibin) = img2d(:,t);
+                ifc.img(:,:,:,t) = frame;
+            end
+            this.prediction = mlfourd.ImagingContext2(ifc);
+            ic = this.prediction;
+        end
+        function ic = buildResidual(this)
+            if isempty(this.prediction)
+                this.buildPrediction()
+            end
+            this.residual = this.fdg - this.prediction;
+            this.residual.fileprefix = [this.fdg.fileprefix this.regionTag '_residual'];
+            ic = this.residual;
+        end
         function this = solve(this)
             fdg_img_2d = this.projectedFdgArray();
             v1_img_1d = this.v1.fourdfp.img(this.roibin);
@@ -139,12 +209,14 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
             %  @param glc
             %  @param hct
             %  @param LC, default := 0.81.   
+            %  @param regionTag, default := '_brain'
             
             import mlglucose.Huang1980Model.wb2plasma
             
             ip = inputParser;
             ip.KeepUnmatched = true;
             addParameter(ip, 'fdg', [])
+            addParameter(ip, 'taus', [], @isnumeric)
             addParameter(ip, 'times_sampled', [], @isnumeric)
             addParameter(ip, 'artery_sampled', [], @isnumeric)
             addParameter(ip, 'cbv', [], @(x) ~isempty(x))
@@ -153,12 +225,15 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
             addParameter(ip, 'hct', @isnumeric)
             addParameter(ip, 'LC', 0.81, @isnumeric)
             addParameter(ip, 'blur', 4.3, @isnumeric)
+            addParameter(ip, 'regionTag', '_brain', @ischar)
             parse(ip, varargin{:})
             ipr = ip.Results;
             
+            this.blur = ipr.blur;
             this.fdg = mlfourd.ImagingContext2(ipr.fdg);
-            this.fdg = this.fdg.blurred(ipr.blur);
+            this.fdg = this.fdg.blurred(this.blur);
             assert(4 == ndims(this.fdg))
+            this.taus = ipr.taus;
             this.times_sampled = ipr.times_sampled;  
             this.hct = ipr.hct;          
             t = 0:this.times_sampled(end);
@@ -175,6 +250,7 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
             this.Nroi = dipsum(this.roibin);
             this.glc = ipr.glc;
             this.LC = ipr.LC;
+            this.regionTag = ipr.regionTag;
         end
         function that = copyElement(this)
             %%  See also web(fullfile(docroot, 'matlab/ref/matlab.mixin.copyable-class.html'))
@@ -189,7 +265,7 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
                 img(:,:,:,ik) = cube;
             end
             fp = strrep(this.fdg.fileprefix, 'fdg', 'ks'); % sprintf('ks_%s_', this.roi.fileprefix));
-            ic = mlfourd.ImagingContext2(img, 'filename', [fp '_' this.roi.fileprefix '.4dfp.hdr']);
+            ic = mlfourd.ImagingContext2(img, 'filename', [fp '_' this.roi.fileprefix '.4dfp.hdr'], 'mmppix', [2 2 2]);
         end
         function ic = masked(this, ic)
             %% retains original fileprefix.

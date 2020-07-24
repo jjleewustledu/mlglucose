@@ -53,7 +53,7 @@ classdef Huang1980 < handle & matlab.mixin.Copyable
             tbl = radm.fromPamStone;
             rows = tbl.Properties.RowNames;
             select = strncmp(rows, 'glc FDG', 7);
-            g = str2num(cell2mat(tbl.Var1(select))); %#ok<ST2NM>
+            g = cellfun(@str2double, tbl.Var1(select));
             g = mean(g(~isempty(g)));
         end
         function h = hctFromRadMeasurements(radm)
