@@ -170,11 +170,12 @@ classdef Huang1980Model
             loss = 0.5 * sum((1 - qs ./ qs0).^2) / sigma0^2; % + sum(log(sigma0*qs0)); % sigma ~ sigma0 * qs0
         end   
         function m = preferredMap()
+            %% init from Huang's table 1
             m = containers.Map;
-            m('k1')  = struct('min',  0.001, 'max', 0.5,  'init', 0.03,   'sigma', 0.02);
-            m('k2')  = struct('min',  eps,   'max', 0.1,  'init', 0.003,  'sigma', 0.01);
-            m('k3')  = struct('min',  eps,   'max', 0.05, 'init', 0.003,  'sigma', 0.002);
-            m('k4')  = struct('min',  eps,   'max', 0.01, 'init', 0.0003, 'sigma', 0.001);
+            m('k1')  = struct('min',  eps, 'max', 5,    'init', 0.048,   'sigma', 0.0048);
+            m('k2')  = struct('min',  eps, 'max', 0.2,  'init', 0.0022,  'sigma', 0.0022);
+            m('k3')  = struct('min',  eps, 'max', 0.1,  'init', 0.001,   'sigma', 0.0001);
+            m('k4')  = struct('min',  eps, 'max', 0.01, 'init', 0.00011, 'sigma', 0.00011);
         end
         function rop  = rbc_over_plasma(t)
             %% RBCOVERPLASMA is [FDG(RBC)]/[FDG(plasma)]
