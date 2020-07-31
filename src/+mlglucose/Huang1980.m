@@ -84,10 +84,10 @@ classdef Huang1980 < handle & matlab.mixin.Copyable
         function r = cmrglc(this, varargin)
             chi = k1(this, varargin{:})*k3(this, varargin{:})/ ...
                 (k2(this, varargin{:}) + k3(this, varargin{:}));
-            r = (60/100)*this.model.glc*this.model.v1*chi/this.model.LC/mloxygen.Martin1987.PLASMA_DENSITY;
+            r = (60/100)*this.model.glc*this.model.v1*chi/this.model.LC/mloxygen.Martin1987.BRAIN_DENSITY;
         end
         function t = ctxglc(this, varargin)
-            t = (60/100)*this.model.glc*K1(this, varargin{:})/this.model.LC/mloxygen.Martin1987.PLASMA_DENSITY;
+            t = (60/100)*this.model.glc*K1(this, varargin{:})/this.model.LC/mloxygen.Martin1987.BRAIN_DENSITY;
         end
         function f = freeglc(this, varargin)
             f = 0.01*cmrglc(this, varargin{:})/k3(this, varargin{:});
