@@ -23,6 +23,7 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
             %  @param convert_wb2plasma, default from mlglucose.Huang1980Model.
             %  @param sigma0, default from mloptimization.SimulatedAnnealing.
             %  @param fileprefix, default from devkit.
+            %  @param blurFdg := {[], 0, 4.3, ...}
             
             import mlfourd.ImagingContext2
             import mlglucose.Huang1980.glcFromRadMeasurements
@@ -34,13 +35,16 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
             addParameter(ip, 'fdg', [], @isnumeric)
             addParameter(ip, 'roi', 'brain.4dfp.hdr', @(x) isa(x, 'mlfourd.ImagingContext2'))
             addParameter(ip, 'cbv', [])
+            addParameter(ip, 'blurFdg', [], @isnumeric)
             parse(ip, devkit, varargin{:})
             ipr = ip.Results;
             
             ipr.roi = mlfourd.ImagingContext2(ipr.roi);
             roibin = ipr.roi.binarized();            
             scanner = ipr.devkit.buildScannerDevice();
-            scanner = scanner.blurred(4.3);
+            if ~isempty(ipr.blurFdg) && ipr.blurFdg > 0
+                scanner = scanner.blurred(ipr.blurFdg);
+            end
             scanner = scanner.volumeAveraged(roibin);
             fdg = asrow(scanner.imagingContext.fourdfp.img);
             fp = sprintf('mlglucose_Huang1980_createFromDeviceKit_dt%s', datestr(now, 'yyyymmddHHMMSS'));  
