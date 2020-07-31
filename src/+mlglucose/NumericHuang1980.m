@@ -35,7 +35,7 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
             addParameter(ip, 'fdg', [], @isnumeric)
             addParameter(ip, 'roi', 'brain.4dfp.hdr', @(x) isa(x, 'mlfourd.ImagingContext2'))
             addParameter(ip, 'cbv', [])
-            addParameter(ip, 'blurFdg', [], @isnumeric)
+            addParameter(ip, 'blurFdg', 4.3, @isnumeric)
             parse(ip, devkit, varargin{:})
             ipr = ip.Results;
             
