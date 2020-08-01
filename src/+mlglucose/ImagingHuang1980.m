@@ -22,6 +22,7 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
         meanAbsError
         measurement % expose for performance when used by mlglucose.Huang1980Strategy
         model       %
+        normMeanAbsError
         Nroi
         prediction
         regionTag
@@ -55,6 +56,7 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
             
             scanner  = ipr.devkit.buildScannerDevice();
             fdg = scanner.imagingContext;
+            fdg = fdg.blurred(4.3);
             
             counting = ipr.devkit.buildCountingDevice();
             aif = pchip(counting.times, counting.activityDensity(), 0:counting.times(end));
@@ -81,27 +83,51 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
                     'artery_interpolated', this.artery_plasma_interpolated, ...
                     'glc', this.glc, ...
                     'hct', this.hct, ...
-                    'LC', this.LC, ...
-                    'convert_wb2plasma', false);
+                    'LC', this.LC);
             end            
         end
-        function ic = buildMeanAbsError(this)
+        function [ic,nic] = buildMeanAbsError(this)
+            % @return \Sigma_i activity_i \frac{tau_i}/{T}
+            
             if isempty(this.residual)
                 this.buildResidual()
             end
             assert(~isempty(this.taus))
-            this.meanAbsError = abs(this.residual);
+            
+            % MAE
+            this.meanAbsError = abs(copy(this.residual));
             this.meanAbsError = this.meanAbsError.timeAveraged('taus', this.taus);
-            this.meanAbsError.fileprefix = [this.fdg.fileprefix this.regionTag '_meanAbsError'];
+            this.meanAbsError.fileprefix = [this.fdg.fileprefix this.regionTag '_MAE'];
             ic = this.meanAbsError;
+            
+            % NMAE
+            fdgTimeAverage = copy(this.fdg);
+            fdgTimeAverage = fdgTimeAverage.timeAveraged();
+            this.normMeanAbsError = copy(this.meanAbsError);            
+            this.normMeanAbsError = this.meanAbsError ./ fdgTimeAverage;
+            this.normMeanAbsError.fileprefix = [this.fdg.fileprefix this.regionTag '_NMAE'];
+            nic = this.normMeanAbsError;
         end
-        function ic = buildPrediction(this)
+        function ic = buildPrediction(this, varargin)
+            %% @param reuseExisting is logical; default is false.
+            
+            ip = inputParser;
+            addParameter(ip, 'reuseExisting', false, @islogical)
+            parse(ip, varargin{:})
+            ipr = ip.Results;
+            
             assert(~isempty(this.ks))
             this.ensureModel()
             
             % initialize ifc from this.fdg
-            ifc = this.fdg.fourdfp;
+            % return existing if reuseExisting
+            ifc = copy(this.fdg.fourdfp);
             ifc.fileprefix = [ifc.fileprefix this.regionTag '_predicted'];
+            if ipr.reuseExisting && isfile(ifc.fqfilename)
+                ic = mlfourd.ImagingContext2(ifc.fqfilename);
+                this.prediction = ic;
+                return
+            end
             sz = size(ifc);
             ifc.img = zeros(sz);
             
@@ -124,12 +150,14 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
                 ifc.img(:,:,:,t) = frame;
             end
             this.prediction = mlfourd.ImagingContext2(ifc);
+            this.prediction = this.prediction.blurred(4.3);
             ic = this.prediction;
         end
         function ic = buildResidual(this)
             if isempty(this.prediction)
                 this.buildPrediction()
             end
+            this.residual = copy(this.fdg);
             this.residual = this.fdg - this.prediction;
             this.residual.fileprefix = [this.fdg.fileprefix this.regionTag '_residual'];
             ic = this.residual;
@@ -154,8 +182,7 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
                             'artery_interpolated', this.artery_plasma_interpolated, ...
                             'glc', this.glc, ...
                             'hct', this.hct, ...
-                            'LC', this.LC, ...
-                            'convert_wb2plasma', false);
+                            'LC', this.LC);
                         strategy = mlglucose.Huang1980SimulAnneal('context', this);
                         strategy = solve(strategy);
                         
@@ -211,8 +238,6 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
             %  @param LC, default := 0.81.   
             %  @param regionTag, default := '_brain'
             
-            import mlglucose.Huang1980Model.wb2plasma
-            
             ip = inputParser;
             ip.KeepUnmatched = true;
             addParameter(ip, 'fdg', [])
@@ -231,14 +256,15 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
             
             this.blur = ipr.blur;
             this.fdg = mlfourd.ImagingContext2(ipr.fdg);
-            this.fdg = this.fdg.blurred(this.blur);
             assert(4 == ndims(this.fdg))
             this.taus = ipr.taus;
             this.times_sampled = ipr.times_sampled;  
-            this.hct = ipr.hct;          
+            this.hct = ipr.hct;
+            
+            % artery management            
             t = 0:this.times_sampled(end);
-            artery_interpolated = pchip(0:length(ipr.artery_sampled)-1, ipr.artery_sampled, t);
-            this.artery_plasma_interpolated = wb2plasma(artery_interpolated, this.hct, t);    
+            this.artery_plasma_interpolated = pchip(0:length(ipr.artery_sampled)-1, ipr.artery_sampled, t);
+            
             cbvic = mlfourd.ImagingContext2(ipr.cbv);
             if dipisnan(cbvic)
                 error('mlglucose:RuntimeError', 'ImagingHuang1980 found dipisnan(cbvic)')
