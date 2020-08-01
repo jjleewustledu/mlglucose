@@ -172,31 +172,15 @@ classdef Huang1980Model
         function m = preferredMap()
             %% init from Huang's table 1
             m = containers.Map;
-            m('k1')  = struct('min',  eps, 'max', 5,    'init', 0.048,   'sigma', 0.0048);
-            m('k2')  = struct('min',  eps, 'max', 0.2,  'init', 0.0022,  'sigma', 0.0022);
-            m('k3')  = struct('min',  eps, 'max', 0.1,  'init', 0.001,   'sigma', 0.0001);
-            m('k4')  = struct('min',  eps, 'max', 0.01, 'init', 0.00011, 'sigma', 0.00011);
-        end
-        function rop  = rbc_over_plasma(t)
-            %% RBCOVERPLASMA is [FDG(RBC)]/[FDG(plasma)]
-            
-            t   = t/60;      % sec -> min
-            a0  = 0.814104;  % FINAL STATS param  a0 mean  0.814192	 std 0.004405
-            a1  = 0.000680;  % FINAL STATS param  a1 mean  0.001042	 std 0.000636
-            a2  = 0.103307;  % FINAL STATS param  a2 mean  0.157897	 std 0.110695
-            tau = 50.052431; % FINAL STATS param tau mean  116.239401	 std 51.979195
-            rop = a0 + a1*t + a2*(1 - exp(-t/tau));
-        end
-        function Cp   = wb2plasma(Cwb, hct, t)
-            import mlglucose.Huang1980Model.rbc_over_plasma;
-            Cp = Cwb./(1 + hct*(rbc_over_plasma(t) - 1));
+            m('k1')  = struct('min',  eps, 'max', 0.5,   'init', 0.048,   'sigma', 0.0048);
+            m('k2')  = struct('min',  eps, 'max', 0.02,  'init', 0.0022,  'sigma', 0.0022);
+            m('k3')  = struct('min',  eps, 'max', 0.01,  'init', 0.001,   'sigma', 0.0001);
+            m('k4')  = struct('min',  eps, 'max', 0.001, 'init', 0.00011, 'sigma', 0.00011);
         end
     end
 
 	methods		  
  		function this = Huang1980Model(varargin)
-            
-            import mlglucose.Huang1980Model.wb2plasma
                 
             ip = inputParser;
             ip.KeepUnmatched = true;
@@ -207,7 +191,6 @@ classdef Huang1980Model
             addParameter(ip, 'glc', 4.7, @isnumeric)
             addParameter(ip, 'hct', 0.4, @isnumeric)
             addParameter(ip, 'LC', 0.81, @isnumeric)
-            addParameter(ip, 'convert_wb2plasma', true, @islogical)
             parse(ip, varargin{:})
             ipr = ip.Results;
             
@@ -226,11 +209,6 @@ classdef Huang1980Model
                 this.hct = this.hct/100;
             end
             this.LC = ipr.LC;
-            
-            if ipr.convert_wb2plasma
-                t = 0:this.times_sampled(end);
-                this.artery_interpolated = wb2plasma(this.artery_interpolated, this.hct, t);
-            end
         end
         
         function fdg  = solution_simulated(this, varargin)
