@@ -20,7 +20,6 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
             %  @param glc is numeric, default from devkit.
             %  @param hct is numeric, default from devkit.
             %  @param LC is numeric, default from mlglucose.Huang1980Model
-            %  @param convert_wb2plasma, default from mlglucose.Huang1980Model.
             %  @param sigma0, default from mloptimization.SimulatedAnnealing.
             %  @param fileprefix, default from devkit.
             %  @param blurFdg := {[], 0, 4.3, ...}
@@ -39,6 +38,8 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
             parse(ip, devkit, varargin{:})
             ipr = ip.Results;
             
+            % scanner provides calibrations, ancillary data
+            
             ipr.roi = mlfourd.ImagingContext2(ipr.roi);
             roibin = ipr.roi.binarized();            
             scanner = ipr.devkit.buildScannerDevice();
@@ -46,16 +47,22 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
                 scanner = scanner.blurred(ipr.blurFdg);
             end
             scanner = scanner.volumeAveraged(roibin);
-            fdg = asrow(scanner.imagingContext.fourdfp.img);
+            fdg = scanner.activityDensity(); % calibrated
+            
+            % v1
             fp = sprintf('mlglucose_Huang1980_createFromDeviceKit_dt%s', datestr(now, 'yyyymmddHHMMSS'));  
             if isnumeric(ipr.cbv)
-                v1 = ipr.cbv/100;
+                v1 = 0.0105*ipr.cbv;
             else
-                v1 = mlfourd.ImagingContext2(ipr.cbv)/100;
+                v1 = 0.0105*mlfourd.ImagingContext2(ipr.cbv);
                 v1 = v1.volumeAveraged(roibin);
             end
+            
+            % AIF            
+            % Dt shifts the AIF in time:  Dt < 0 shifts left; Dt > 0 shifts right.
             counting = ipr.devkit.buildCountingDevice();
-            aif = pchip(counting.times, counting.activityDensity(), 0:scanner.times(end));
+            Dt = mlglucose.NumericHuang1980.shiftAif(counting, scanner);
+            aif = pchip(counting.times + Dt, counting.activityDensity(), 0:scanner.times(end));
             radm = counting.radMeasurements;
             
             this = mlglucose.NumericHuang1980( ...
@@ -69,6 +76,35 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
                 'fileprefix', fp, ...
                 varargin{:});
         end
+        function Dt = shiftAif(varargin)
+            ip = inputParser;
+            addRequired(ip, 'counter')
+            addRequired(ip, 'scanner')
+            parse(ip, varargin{:})
+            ipr = ip.Results;
+            
+            t_c        = asrow(ipr.counter.times);
+            activity_c = asrow(ipr.counter.activityDensity());
+            t_s        = asrow(ipr.scanner.times);
+            activity_s = asrow(ipr.scanner.imagingContext.fourdfp.img);
+            
+            unif_t = 0:max([t_c t_s]);
+            unif_activity_s = pchip(t_s, activity_s, unif_t);
+            d_activity_s = diff(unif_activity_s); % uniformly sampled time-derivative
+            
+            % shift dcv in time to match inflow with dtac            
+            [~,idx_c] = max(activity_c > max(activity_c)/2);
+            [~,idx_s] = max(d_activity_s > max(d_activity_s)/2);
+            Dt = unif_t(idx_s) - t_c(idx_c); % Dt ~ -10
+            if Dt > 0
+                warning('mlglucose:ValueError', 'NumericHuang1980.shiftAif.Dt -> %g', Dt)
+                Dt = -20;
+            end
+            if Dt < -300
+                warning('mlglucose:ValueError', 'NumericHuang1980.shiftAif.Dt -> %g', Dt)
+                Dt = -20;
+            end
+        end 
     end
 
 	methods 		  
@@ -83,7 +119,6 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
             %  @param glc is numeric, mmol/L.
             %  @param hct is numeric, percent.
             %  @param LC is numeric.
-            %  @param convert_wb2plasma is logical.
             %  @param sigma0.
             %  @param fileprefix.
 
