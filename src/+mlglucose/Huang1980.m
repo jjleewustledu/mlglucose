@@ -26,8 +26,7 @@ classdef Huang1980 < handle & matlab.mixin.Copyable
             %  @param artery_interpolated, default from devkit.
             %  @param glc is numeric, default from devkit.
             %  @param hct is numeric, default from devkit.
-            %  @param LC is numeric, default from mlglucose.Huang1980Model
-            %  @param convert_wb2plasma, default from mlglucose.Huang1980Model.
+            %  @param LC is numeric, default from mlglucose.Huang1980Model.
             %  @param sigma0, default from mloptimization.SimulatedAnnealing.
             %  @param fileprefix, default from devkit.
             
