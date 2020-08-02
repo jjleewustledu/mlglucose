@@ -7,6 +7,7 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
  	%% It was developed on Matlab 9.7.0.1319299 (R2019b) Update 5 for MACI64.  Copyright 2020 John Joowon Lee.
  	 	
 	properties (Constant)
+        JITTER = 0.01 % > 0 to aid deep learning
         MAX_NORMAL_BACKGROUND = 20 % Bq/mL
         MIN_V1 = 0.001; % fraction
     end
@@ -36,27 +37,24 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
     
     methods (Static)
         function this = createFromDeviceKit(devkit, varargin)
-            %% 
+            %% makes no adjustments of AIF timing
             %  @param required devkit is mlpet.IDeviceKit.
             %  @param cbv is understood by mlfourd.ImagingContext2.
             %  @param roi is understood by mlfourd.ImagingContext2.
-            %  @param blur is numeric.
-            
-            import mlfourd.ImagingContext2
-            import mlglucose.Huang1980.glcFromRadMeasurements
-            import mlglucose.Huang1980.hctFromRadMeasurements
+            %  @param blurFdg := {[], 0, 4.3, ...}
             
             ip = inputParser;
             ip.KeepUnmatched = true;
             addRequired(ip, 'devkit', @(x) isa(x, 'mlpet.IDeviceKit'))
             addParameter(ip, 'cbv', [], @(x) ~isempty(x))
             addParameter(ip, 'roi', [], @(x) ~isempty(x))
+            addParameter(ip, 'blurFdg', 4.3, @isnumeric)
             parse(ip, devkit, varargin{:})
             ipr = ip.Results;
             
             scanner  = ipr.devkit.buildScannerDevice();
             fdg = scanner.imagingContext;
-            fdg = fdg.blurred(4.3);
+            fdg = fdg.blurred(ipr.blurFdg);
             
             counting = ipr.devkit.buildCountingDevice();
             aif = pchip(counting.times, counting.activityDensity(), 0:counting.times(end));
@@ -67,8 +65,8 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
                 'taus', scanner.taus, ...
                 'times_sampled', scanner.timesMid, ...
                 'artery_sampled', aif, ...
-                'glc', glcFromRadMeasurements(radm), ...
-                'hct', hctFromRadMeasurements(radm), ...
+                'glc', mlglucose.Huang1980.glcFromRadMeasurements(radm), ...
+                'hct', mlglucose.Huang1980.hctFromRadMeasurements(radm), ...
                 varargin{:});
         end
     end
@@ -117,39 +115,39 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
             ipr = ip.Results;
             
             assert(~isempty(this.ks))
-            this.ensureModel()
             
             % initialize ifc from this.fdg
             % return existing if reuseExisting
-            ifc = copy(this.fdg.fourdfp);
-            ifc.fileprefix = [ifc.fileprefix this.regionTag '_predicted'];
-            if ipr.reuseExisting && isfile(ifc.fqfilename)
-                ic = mlfourd.ImagingContext2(ifc.fqfilename);
+            fdg_ifc = copy(this.fdg.fourdfp);
+            fdg_ifc.fileprefix = [fdg_ifc.fileprefix this.regionTag '_predicted'];
+            if ipr.reuseExisting && isfile(fdg_ifc.fqfilename)
+                ic = mlfourd.ImagingContext2(fdg_ifc.fqfilename);
                 this.prediction = ic;
                 return
             end
-            sz = size(ifc);
-            ifc.img = zeros(sz);
+            fdg_sz = size(fdg_ifc);
+            fdg_ifc.img = zeros(fdg_sz);
             
             % represent prediction as voxels (x) times
-            img2d = zeros(this.Nroi, sz(4));
-            ks_ = zeros(this.Nroi,4);
-            for ik = 1:4                
+            img2d = zeros(this.Nroi, fdg_sz(4));
+            ks_ = zeros(this.Nroi,5);
+            for ik = 1:5     
                 rate = this.ks.fourdfp.img(:,:,:,ik);                
                 ks_(:, ik) = rate(this.roibin);
             end
             v1_ = this.v1.fourdfp.img(this.roibin);
-            for vxl = 1:this.Nroi
-                img2d(vxl,:) = this.model.solution_simulated(ks_(vxl,:), v1_(vxl));
+            this.ensureModel() % wihtout voxelwise adjustments of AIF timings
+            for vxl = 1:this.Nroi                
+                img2d(vxl,:) = this.model.simulated(ks_(vxl,:), 'v1', v1_(vxl));
             end
             
             % embed prediction in R^3 (x) times
-            for t = 1:sz(4)
-                frame = zeros(sz(1:3));
+            for t = 1:fdg_sz(4)
+                frame = zeros(fdg_sz(1:3));
                 frame(this.roibin) = img2d(:,t);
-                ifc.img(:,:,:,t) = frame;
+                fdg_ifc.img(:,:,:,t) = frame;
             end
-            this.prediction = mlfourd.ImagingContext2(ifc);
+            this.prediction = mlfourd.ImagingContext2(fdg_ifc);
             this.prediction = this.prediction.blurred(4.3);
             ic = this.prediction;
         end
@@ -197,10 +195,10 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
                         map_k2 = map('k2');
                         map_k3 = map('k3');
                         map_k4 = map('k4');                        
-                        map_k1.init = ks_img_2d(vxl, 1)*(1 + 0.01*randn()); % cached struct.init := latest solutions with jitter
-                        map_k2.init = ks_img_2d(vxl, 2)*(1 + 0.01*randn());
-                        map_k3.init = ks_img_2d(vxl, 3)*(1 + 0.01*randn());
-                        map_k4.init = ks_img_2d(vxl, 4)*(1 + 0.01*randn());
+                        map_k1.init = ks_img_2d(vxl, 1)*(1 + this.JITTER*randn()); % cached struct.init := latest solutions with jitter
+                        map_k2.init = ks_img_2d(vxl, 2)*(1 + this.JITTER*randn());
+                        map_k3.init = ks_img_2d(vxl, 3)*(1 + this.JITTER*randn());
+                        map_k4.init = ks_img_2d(vxl, 4)*(1 + this.JITTER*randn());
                         map('k1') = map_k1; % update mapped struct with adjusted cache
                         map('k2') = map_k2;
                         map('k3') = map_k3;
