@@ -212,13 +212,29 @@ classdef Huang1980Model
         end
         
         function fdg  = solution_simulated(this, varargin)
+            %% DEPRECATED
+            fdg = this.simulated(varargin{:});
+        end
+        function fdg  = simulated(this, varargin)
+            %% SIMULATED simulates tissue activity with passed and internal parameters.
+            %  @param required ks is [k1 k2 k3 k4 Dt].
+            %  @param v1 is CBV < 1 and dimensionless; default is this.v1.
+            %  @param aif is numeric; default is this.artery_interpolated for model state.
+        
             ip = inputParser;
             addRequired(ip, 'ks', @isnumeric)
-            addOptional(ip, 'v1', this.v1, @isnumeric)
+            addParameter(ip, 'v1', this.v1, @isnumeric)
+            addParameter(ip, 'aif', this.artery_interpolated, @isnumeric)
             parse(ip, varargin{:})
-            ipr = ip.Results;
+            ipr = ip.Results;            
             
-            fdg = mlglucose.Huang1980Model.sampled(ipr.ks, ipr.v1, this.artery_interpolated, this.times_sampled);
+            ks = ipr.ks(1:4);
+            Dt = ipr.ks(5);
+            if Dt ~= 0
+                times = 0:length(ipr.aif)-1;
+                aif = pchip(times+Dt, ipr.aif, times);
+            end
+            fdg = mlglucose.Huang1980Model.sampled(ks, ipr.v1, aif, this.times_sampled);
         end
     end 
 
