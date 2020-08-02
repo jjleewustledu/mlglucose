@@ -9,6 +9,7 @@ classdef Huang1980 < handle & matlab.mixin.Copyable
  	%% It was developed on Matlab 9.7.0.1319299 (R2019b) Update 5 for MACI64.  Copyright 2020 John Joowon Lee.
  	   
     properties 
+        Dt          % time-shift for AIF; Dt < 0 shifts backwards in time.
         measurement % expose for performance when used by mlglucose.Huang1980Strategy
         model       %
     end
@@ -29,10 +30,6 @@ classdef Huang1980 < handle & matlab.mixin.Copyable
             %  @param LC is numeric, default from mlglucose.Huang1980Model.
             %  @param sigma0, default from mloptimization.SimulatedAnnealing.
             %  @param fileprefix, default from devkit.
-            
-            import mlfourd.ImagingContext2
-            import mlglucose.Huang1980.glcFromRadMeasurements
-            import mlglucose.Huang1980.hctFromRadMeasurements
             
             ip = inputParser;
             ip.KeepUnmatched = true;
@@ -115,7 +112,7 @@ classdef Huang1980 < handle & matlab.mixin.Copyable
             [k(4),sk(4)] = k4(this.strategy_, varargin{:});
         end
         function this = simulated(this, varargin)
-            this.measurement = this.model.solution_simulated(varargin{:});
+            this.measurement = this.model.simulated(varargin{:});
             this.strategy_.Measurement = this.measurement; % strategy_ needs value copies for performance
         end
         function this = solve(this, varargin)
@@ -134,6 +131,11 @@ classdef Huang1980 < handle & matlab.mixin.Copyable
     
     methods (Access = protected)
         function this = Huang1980(varargin)
+            ip = inputParser;            
+            ip.KeepUnmatched = true;
+            addParameter(ip, 'Dt', 0, @isscalar)
+            parse(ip, varargin{:})
+            this.Dt = ip.Results.Dt;
         end
         function that = copyElement(this)
             %%  See also web(fullfile(docroot, 'matlab/ref/matlab.mixin.copyable-class.html'))
