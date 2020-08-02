@@ -8,7 +8,7 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
  	
     methods (Static)
         function this = createFromDeviceKit(devkit, varargin)
-            %% 
+            %% adjusts AIF timings for coincidence of inflow with tissue activity from scanner
             %  @param required devkit is mlpet.IDeviceKit.
             %  @param
             %  @param fdg is numeric, default from devkit.
@@ -23,10 +23,6 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
             %  @param sigma0, default from mloptimization.SimulatedAnnealing.
             %  @param fileprefix, default from devkit.
             %  @param blurFdg := {[], 0, 4.3, ...}
-            
-            import mlfourd.ImagingContext2
-            import mlglucose.Huang1980.glcFromRadMeasurements
-            import mlglucose.Huang1980.hctFromRadMeasurements
             
             ip = inputParser;
             ip.KeepUnmatched = true;
@@ -43,9 +39,7 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
             ipr.roi = mlfourd.ImagingContext2(ipr.roi);
             roibin = ipr.roi.binarized();            
             scanner = ipr.devkit.buildScannerDevice();
-            if ~isempty(ipr.blurFdg) && ipr.blurFdg > 0
-                scanner = scanner.blurred(ipr.blurFdg);
-            end
+            scanner = scanner.blurred(ipr.blurFdg);
             scanner = scanner.volumeAveraged(roibin);
             fdg = scanner.activityDensity(); % calibrated
             
@@ -61,7 +55,7 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
             % AIF            
             % Dt shifts the AIF in time:  Dt < 0 shifts left; Dt > 0 shifts right.
             counting = ipr.devkit.buildCountingDevice();
-            Dt = mlglucose.NumericHuang1980.shiftAif(counting, scanner);
+            Dt = mlglucose.NumericHuang1980.DTimeToShift(counting, scanner);
             aif = pchip(counting.times + Dt, counting.activityDensity(), 0:scanner.times(end));
             radm = counting.radMeasurements;
             
@@ -71,12 +65,13 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
                 'v1', v1, ...
                 'times_sampled', scanner.timesMid, ...
                 'artery_interpolated', aif, ...
-                'glc', glcFromRadMeasurements(radm), ...
-                'hct', hctFromRadMeasurements(radm), ...
+                'Dt', Dt, ...
+                'glc', mlglucose.Huang1980.glcFromRadMeasurements(radm), ...
+                'hct', mlglucose.Huang1980.hctFromRadMeasurements(radm), ...
                 'fileprefix', fp, ...
                 varargin{:});
         end
-        function Dt = shiftAif(varargin)
+        function Dt = DTimeToShift(varargin)
             ip = inputParser;
             addRequired(ip, 'counter')
             addRequired(ip, 'scanner')
@@ -85,26 +80,24 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
             
             t_c        = asrow(ipr.counter.times);
             activity_c = asrow(ipr.counter.activityDensity());
-            t_s        = asrow(ipr.scanner.times);
+            t_s        = asrow(ipr.scanner.timesMid);
             activity_s = asrow(ipr.scanner.imagingContext.fourdfp.img);
             
             unif_t = 0:max([t_c t_s]);
             unif_activity_s = pchip(t_s, activity_s, unif_t);
             d_activity_s = diff(unif_activity_s); % uniformly sampled time-derivative
             
-            % shift dcv in time to match inflow with dtac            
-            [~,idx_c] = max(activity_c > max(activity_c)/2);
-            [~,idx_s] = max(d_activity_s > max(d_activity_s)/2);
-            Dt = unif_t(idx_s) - t_c(idx_c); % Dt ~ -10
-            if Dt > 0
-                warning('mlglucose:ValueError', 'NumericHuang1980.shiftAif.Dt -> %g', Dt)
-                Dt = -20;
+            % shift dcv in time to match inflow with dtac    
+            % use 0.1 of max since counting SNR >> 10 and idx_scanner ~ 1
+            [~,idx_c] = max(activity_c > 0.1*max(activity_c));
+            [~,idx_s] = max(d_activity_s > 0.1*max(d_activity_s));
+            Dt = unif_t(idx_s) - t_c(idx_c); % Dt ~ -20
+            if Dt < -t_c(idx_c) || Dt > 0
+                warning('mlglucose:ValueError', ...
+                    'NumericHuang1980.DTimeToShift.Dt -> %g; forcing -> %g', Dt, -t_c(idx_c))
+                Dt = -t_c(idx_c);
             end
-            if Dt < -300
-                warning('mlglucose:ValueError', 'NumericHuang1980.shiftAif.Dt -> %g', Dt)
-                Dt = -20;
-            end
-        end 
+        end
     end
 
 	methods 		  
@@ -116,6 +109,7 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
             %  @param v1
             %  @param times_sampled non-uniformly scheduled by the time-resolved PET reconstruction.
             %  @param artery_interpolated
+            %  @param Dt is numeric, s of time-shifting for AIF.
             %  @param glc is numeric, mmol/L.
             %  @param hct is numeric, percent.
             %  @param LC is numeric.
@@ -130,7 +124,7 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
             addParameter(ip, 'solver', 'simulanneal', @ischar)
             parse(ip, varargin{:})
             ipr = ip.Results;
-            
+                        
             this.measurement = ipr.fdg;
             this.model = mlglucose.Huang1980Model(varargin{:});
             switch lower(ipr.solver)
