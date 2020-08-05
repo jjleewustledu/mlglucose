@@ -212,7 +212,7 @@ classdef Huang1980Model
         end
         
         function fdg  = solution_simulated(this, varargin)
-            %% DEPRECATED
+            warning('mlglucose:Deprecated', 'Huang1980Model.solution_simulated():  prefer simulated()');
             fdg = this.simulated(varargin{:});
         end
         function fdg  = simulated(this, varargin)
@@ -223,7 +223,7 @@ classdef Huang1980Model
         
             ip = inputParser;
             addRequired(ip, 'ks', @isnumeric)
-            addParameter(ip, 'v1', this.v1, @isnumeric)
+            addParameter(ip, 'v1', this.v1, @isscalar)
             addParameter(ip, 'aif', this.artery_interpolated, @isnumeric)
             parse(ip, varargin{:})
             ipr = ip.Results;            
