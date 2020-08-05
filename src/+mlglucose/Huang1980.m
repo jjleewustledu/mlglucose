@@ -8,7 +8,8 @@ classdef Huang1980 < handle & matlab.mixin.Copyable
  	%  last modified $LastChangedDate$ and placed into repository /Users/jjlee/MATLAB-Drive/mlglucose/src/+mlglucose.
  	%% It was developed on Matlab 9.7.0.1319299 (R2019b) Update 5 for MACI64.  Copyright 2020 John Joowon Lee.
  	   
-    properties 
+    properties        
+        devkit
         Dt          % time-shift for AIF; Dt < 0 shifts backwards in time.
         measurement % expose for performance when used by mlglucose.Huang1980Strategy
         model       %
@@ -130,12 +131,16 @@ classdef Huang1980 < handle & matlab.mixin.Copyable
     end
     
     methods (Access = protected)
-        function this = Huang1980(varargin)
+        function this = Huang1980(devkit, varargin)
             ip = inputParser;            
             ip.KeepUnmatched = true;
+            addRequired(ip, 'devkit', @(x) isa(x, 'mlpet.IDeviceKit'))
             addParameter(ip, 'Dt', 0, @isscalar)
-            parse(ip, varargin{:})
-            this.Dt = ip.Results.Dt;
+            parse(ip, devkit, varargin{:})
+            ipr = ip.Results;
+            
+            this.devkit = ipr.devkit;
+            this.Dt = ipr.Dt;
         end
         function that = copyElement(this)
             %%  See also web(fullfile(docroot, 'matlab/ref/matlab.mixin.copyable-class.html'))
