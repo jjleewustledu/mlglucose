@@ -1,11 +1,14 @@
 classdef NumericHuang1980 < handle & mlglucose.Huang1980
-	%% NUMERICHUANG1980  
+	%% NUMERICHUANG1980 
 
 	%  $Revision$
  	%  was created 29-Apr-2020 23:31:01 by jjlee,
  	%  last modified $LastChangedDate$ and placed into repository /Users/jjlee/MATLAB-Drive/mlglucose/src/+mlglucose.
  	%% It was developed on Matlab 9.7.0.1319299 (R2019b) Update 5 for MACI64.  Copyright 2020 John Joowon Lee.
  	
+    properties
+    end
+    
     methods (Static)
         function this = createFromDeviceKit(devkit, varargin)
             %% adjusts AIF timings for coincidence of inflow with tissue activity from scanner
@@ -34,6 +37,12 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
             parse(ip, devkit, varargin{:})
             ipr = ip.Results;
             
+            % prepare atlas data
+            
+            sesd = ipr.devkit.sessionData;
+            sesd.jitOn222(sesd.wmparc1OnAtlas())
+            sesd.jitOn222(sesd.fdgOnAtlas())
+            
             % scanner provides calibrations, ancillary data
             
             ipr.roi = mlfourd.ImagingContext2(ipr.roi);
@@ -41,25 +50,28 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
             scanner = ipr.devkit.buildScannerDevice();
             scanner = scanner.blurred(ipr.blurFdg);
             scanner = scanner.volumeAveraged(roibin);
-            fdg = scanner.activityDensity(); % calibrated
+            fdg = scanner.activityDensity(); % calibrated, decaying
             
             % v1
+            
             fp = sprintf('mlglucose_Huang1980_createFromDeviceKit_dt%s', datestr(now, 'yyyymmddHHMMSS'));  
             if isnumeric(ipr.cbv)
                 v1 = 0.0105*ipr.cbv;
             else
-                v1 = 0.0105*mlfourd.ImagingContext2(ipr.cbv);
+                v1 = mlfourd.ImagingContext2(ipr.cbv) .* 0.0105;
                 v1 = v1.volumeAveraged(roibin);
             end
             
             % AIF            
             % Dt shifts the AIF in time:  Dt < 0 shifts left; Dt > 0 shifts right.
+            
             counting = ipr.devkit.buildCountingDevice();
             Dt = mlglucose.NumericHuang1980.DTimeToShift(counting, scanner);
             aif = pchip(counting.times + Dt, counting.activityDensity(), 0:scanner.times(end));
             radm = counting.radMeasurements;
             
             this = mlglucose.NumericHuang1980( ...
+                devkit, ...
                 'fdg', fdg, ...
                 'solver', 'simulanneal', ...
                 'v1', v1, ...
@@ -101,8 +113,9 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
     end
 
 	methods 		  
- 		function this = NumericHuang1980(varargin)
+ 		function this = NumericHuang1980(devkit, varargin)
  			%% NUMERICHUANG1980
+            %  @param required devkit is mlpet.IDeviceKit.
             %  @param fdg is numeric.
             %  @param solver is in {'nest' 'simulanneal' 'hmc' 'lm' 'bfgs'}.
             %  @param map
@@ -116,7 +129,7 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
             %  @param sigma0.
             %  @param fileprefix.
 
- 			this = this@mlglucose.Huang1980(varargin{:});	
+ 			this = this@mlglucose.Huang1980(devkit, varargin{:});	
             
             ip = inputParser;
             ip.KeepUnmatched = true;
