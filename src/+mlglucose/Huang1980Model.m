@@ -188,7 +188,7 @@ classdef Huang1980Model
             addParameter(ip, 'v1', 0.038, @isnumeric)
             addParameter(ip, 'times_sampled', [], @isnumeric)
             addParameter(ip, 'artery_interpolated', [], @isnumeric)
-            addParameter(ip, 'glc', 4.7, @isnumeric)
+            addParameter(ip, 'glc', 100, @isnumeric)
             addParameter(ip, 'hct', 0.4, @isnumeric)
             addParameter(ip, 'LC', 0.81, @isnumeric)
             parse(ip, varargin{:})
