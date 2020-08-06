@@ -8,14 +8,15 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
  	 	
 	properties (Constant)
         JITTER = 0.01 % > 0 to aid deep learning
+        HALFLIFE = 6586.272; % s
         MAX_NORMAL_BACKGROUND = 20 % Bq/mL
         MIN_V1 = 0.001; % fraction
     end
     
 	properties
         artery_plasma_interpolated
-        blur
-        fdg
+        devkit
+        fdg % scanner.activityDensity(), decaying & calibrated
         glc
         hct
         ks
@@ -29,7 +30,7 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
         regionTag
         residual
         roi
-        roibin
+        roibin % is logical
         taus
  		times_sampled
         v1
@@ -39,28 +40,35 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
         function this = createFromDeviceKit(devkit, varargin)
             %% makes no adjustments of AIF timing
             %  @param required devkit is mlpet.IDeviceKit.
-            %  @param cbv is understood by mlfourd.ImagingContext2.
+            %  @param fdg is numeric, default from devkit.
             %  @param roi is understood by mlfourd.ImagingContext2.
+            %  @param cbv is understood by mlfourd.ImagingContext2.
             %  @param blurFdg := {[], 0, 4.3, ...}
             
             ip = inputParser;
             ip.KeepUnmatched = true;
             addRequired(ip, 'devkit', @(x) isa(x, 'mlpet.IDeviceKit'))
-            addParameter(ip, 'cbv', [], @(x) ~isempty(x))
+            addParameter(ip, 'fdg', [], @isnumeric)
             addParameter(ip, 'roi', [], @(x) ~isempty(x))
+            addParameter(ip, 'cbv', [], @(x) ~isempty(x))
             addParameter(ip, 'blurFdg', 4.3, @isnumeric)
             parse(ip, devkit, varargin{:})
             ipr = ip.Results;
             
-            scanner  = ipr.devkit.buildScannerDevice();
-            fdg = scanner.imagingContext;
-            fdg = fdg.blurred(ipr.blurFdg);
+            % scanner provides calibrations, ancillary data
+            
+            scanner = ipr.devkit.buildScannerDevice();
+            scanner = scanner.blurred(ipr.blurFdg);
+            fdg = scanner.activityDensity(); % calibrated, decaying
+            
+            % AIF  
             
             counting = ipr.devkit.buildCountingDevice();
-            aif = pchip(counting.times, counting.activityDensity(), 0:counting.times(end));
+            aif = pchip(counting.times, counting.activityDensity(), 0:scanner.times(end));
             radm = counting.radMeasurements;
             
             this = mlglucose.ImagingHuang1980( ...
+                devkit, ...
                 'fdg', fdg, ...
                 'taus', scanner.taus, ...
                 'times_sampled', scanner.timesMid, ...
@@ -91,6 +99,8 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
                 this.buildResidual()
             end
             assert(~isempty(this.taus))
+            sesd = this.devkit.sessionData;
+            fdgDCorr = sesd.fdgOnAtlas('typ', 'mlfourd.ImagingContext2');
             
             % MAE
             this.meanAbsError = abs(copy(this.residual));
@@ -117,51 +127,56 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
             ipr = ip.Results;
             
             assert(~isempty(this.ks))
+            sesd = this.devkit.sessionData;
+            scanner = this.devkit.buildScannerDevice();
             
-            % initialize ifc from this.fdg
+            % init working_ifc from fdgOnAtlas
             % return existing if reuseExisting
-            fdg_ifc = copy(this.fdg.fourdfp);
-            fdg_ifc.fileprefix = [fdg_ifc.fileprefix this.regionTag '_predicted'];
-            if ipr.reuseExisting && isfile(fdg_ifc.fqfilename)
-                ic = mlfourd.ImagingContext2(fdg_ifc.fqfilename);
+            working_ifc = sesd.fdgOnAtlas('typ', 'mlfourd.ImagingFormatContext');
             fileprefix0 = [working_ifc.fileprefix this.regionTag '_predicted'];
+            working_ifc.fileprefix = fileprefix0;
+            sz = size(working_ifc);
+            if ipr.reuseExisting && isfile(working_ifc.fqfilename)
+                ic = mlfourd.ImagingContext2(working_ifc.fqfilename);
                 this.prediction = ic;
                 return
-            end
-            fdg_sz = size(fdg_ifc);
-            fdg_ifc.img = zeros(fdg_sz);
+            end            
             
-            % represent prediction as voxels (x) times
-            img2d = zeros(this.Nroi, fdg_sz(4));
+            % represent prediction in R^2:  voxels^1 (x) times            
             ks_ = zeros(this.Nroi,5);
             for ik = 1:5     
                 rate = this.ks.fourdfp.img(:,:,:,ik);                
                 ks_(:, ik) = rate(this.roibin);
             end
-            v1_ = this.v1.fourdfp.img(this.roibin);
-            this.ensureModel() % wihtout voxelwise adjustments of AIF timings
+            v1_ = this.v1.blurred(4.3);
+            v1_ = v1_.fourdfp.img(this.roibin);            
+            this.ensureModel() % without voxelwise adjustments of AIF timings  
+            img2d = zeros(this.Nroi, sz(4));          
             for vxl = 1:this.Nroi                
-                img2d(vxl,:) = this.model.simulated(ks_(vxl,:), 'v1', v1_(vxl));
+                img2d(vxl,:) = this.model.simulated(ks_(vxl,:), 'v1', v1_(vxl)); % adjust AIF timings
             end
             
-            % embed prediction in R^3 (x) times
-            for t = 1:fdg_sz(4)
-                frame = zeros(fdg_sz(1:3));
+            % embed prediction in R^4:  voxels^3 (x) times
+            working_ifc.img = zeros(sz);
+            for t = 1:sz(4)
+                frame = zeros(sz(1:3));
                 frame(this.roibin) = img2d(:,t);
-                fdg_ifc.img(:,:,:,t) = frame;
+                working_ifc.img(:,:,:,t) = frame;
             end
-            this.prediction = mlfourd.ImagingContext2(fdg_ifc);
-            this.prediction = this.prediction.blurred(4.3);
-            ic = this.prediction;
+            
+            % decay-correct & remove calibrations
+            ic = scanner.decayCorrectLike(working_ifc);
+            ic = ic ./ scanner.invEfficiencyf(sesd);
+            ic.fileprefix = fileprefix0;
+            this.prediction = ic;
         end
         function ic = buildResidual(this)
             if isempty(this.prediction)
                 this.buildPrediction()
-            end
-            this.residual = copy(this.fdg);
-            this.residual = this.fdg - this.prediction;
-            this.residual.fileprefix = [this.fdg.fileprefix this.regionTag '_residual'];
-            ic = this.residual;
+            end            
+            sesd = this.devkit.sessionData;
+            fdgDCorr = sesd.fdgOnAtlas('typ', 'mlfourd.ImagingContext2');
+            ic = this.prediction - fdgDCorr;
             ic.fileprefix = [fdgDCorr.fileprefix this.regionTag  '_residual'];
         end
         function this = solve(this)
@@ -227,9 +242,9 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
     %% PROTECTED
     
 	methods (Access = protected)
-        function this = ImagingHuang1980(varargin)
-            
-            %% 
+        function this = ImagingHuang1980(devkit, varargin)
+            %% IMAGINGHUANG1980
+            %  @param required devkit is mlpet.IDeviceKit.
             %  @param fdg is understood by mlfourd.ImagingContext2.
             %  @param times_sampled from scanner is numeric.
             %  @param artery_sampled from counter is numeric.
@@ -238,10 +253,11 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
             %  @param glc
             %  @param hct
             %  @param LC, default := 0.81.   
-            %  @param regionTag, default := '_brain'
+            %  @param regionTag is char.
             
             ip = inputParser;
             ip.KeepUnmatched = true;
+            addRequired(ip, 'devkit', @(x) isa(x, 'mlpet.IDeviceKit'))
             addParameter(ip, 'fdg', [])
             addParameter(ip, 'taus', [], @isnumeric)
             addParameter(ip, 'times_sampled', [], @isnumeric)
@@ -251,13 +267,11 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
             addParameter(ip, 'glc', @isnumeric)
             addParameter(ip, 'hct', @isnumeric)
             addParameter(ip, 'LC', 0.81, @isnumeric)
-            addParameter(ip, 'blur', 4.3, @isnumeric)
-            addParameter(ip, 'regionTag', '_brain', @ischar)
-            parse(ip, varargin{:})
             addParameter(ip, 'regionTag', '', @ischar)
+            parse(ip, devkit, varargin{:})
             ipr = ip.Results;
             
-            this.blur = ipr.blur;
+            this.devkit = ipr.devkit;
             this.fdg = mlfourd.ImagingContext2(ipr.fdg);
             assert(4 == ndims(this.fdg))
             this.taus = ipr.taus;
@@ -272,7 +286,7 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
             if dipisnan(cbvic)
                 error('mlglucose:RuntimeError', 'ImagingHuang1980 found dipisnan(cbvic)')
             end
-            this.v1 = cbvic/100;
+            this.v1 = cbvic ./ 105;
             this.roi = mlfourd.ImagingContext2(ipr.roi);
             this.roibin = this.roi.fourdfp.img > 0;
             this.fdg = this.masked(this.fdg);
