@@ -47,11 +47,46 @@ classdef Huang1980 < handle & matlab.mixin.Copyable
             end
         end
         function g = glcFromRadMeasurements(radm)
+            %  @return mg/dL
+            
             tbl = radm.fromPamStone;
             rows = tbl.Properties.RowNames;
             select = strncmp(rows, 'glc FDG', 7);
             g = cellfun(@str2double, tbl.Var1(select));
-            g = mean(g(~isempty(g)));
+            g = mean(g(~isempty(g)), 'omitnan');
+        end
+        function g = glcConversion(g, unitsIn, unitsOut)
+            %  @param required g is numeric
+            %  @param required unitsIn, unitsOut in {'mg/dL' 'mmol/L' 'umol/hg'}
+            
+            assert(isnumeric(g))
+            assert(ischar(unitsIn))
+            assert(ischar(unitsOut))
+            if strcmp(unitsIn, unitsOut)
+                return
+            end
+            
+            switch unitsIn % to SI
+                case 'mg/dL'
+                    g = g * 0.0555;
+                case 'mmol/L'
+                case 'umol/hg'
+                    % [mmol/L] == [umol/hg] [mmol/umol] [hg/g] [g/mL] [mL/L] 
+                    g = g * 1e-3 * 1e-2 * 1.05 * 1e3;
+                otherwise
+                    error('mlglucose:ValueError', 'Huang1980.gclConversion')
+            end
+            
+            switch unitsOut % SI to desired
+                case 'mg/dL'
+                    g = g / 0.0555;
+                case 'mmol/L'
+                case 'umol/hg'
+                    % [umol/hg] == [mmol/L] [umol/mmol] [L/mL] [mL/g] [g/hg] 
+                    g = g * 1e3 * 1e-3 * (1/1.05) * 1e2;
+                otherwise
+                    error('mlglucose:ValueError', 'Huang1980.gclConversion')
+            end
         end
         function h = hctFromRadMeasurements(radm)
             h = radm.fromPamStone{'Hct', 'Var1'};
