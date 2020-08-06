@@ -113,16 +113,24 @@ classdef Huang1980 < handle & matlab.mixin.Copyable
             ic = mlfourd.ImagingContext2(img, 'fileprefix', fp, varargin{:});
         end
         
-        function r = cmrglc(this, varargin)
-            chi = k1(this, varargin{:})*k3(this, varargin{:})/ ...
+        function c = chi(this, varargin)
+            %  @return 1/s
+            
+            c = this.model.v1*k1(this, varargin{:})*k3(this, varargin{:})/ ...
                 (k2(this, varargin{:}) + k3(this, varargin{:}));
-            r = (60/100)*this.model.glc*this.model.v1*chi/this.model.LC/mloxygen.Martin1987.BRAIN_DENSITY;
+        end
+        function r = cmrglc(this, varargin)
+            %  @return umol/hg/min
+            
+            % [umol/mmol] [(mmol/L) / (mg/dL)] [L/dL] [dL/mL] [g/hg] [mL/g] == [umol/hg]
+            glc_ = this.glcConvertsion(this.model.glc, 'mg/dL', 'umol/hg'); 
+            r = 60*this.chi(varargin{:})*glc_/this.model.LC;
         end
         function t = ctxglc(this, varargin)
-            t = (60/100)*this.model.glc*K1(this, varargin{:})/this.model.LC/mloxygen.Martin1987.BRAIN_DENSITY;
+            t = nan;
         end
         function f = freeglc(this, varargin)
-            f = 0.01*cmrglc(this, varargin{:})/k3(this, varargin{:});
+            f = nan;
         end
         function [K,sK] = K1(this, varargin)
             [K,sK] = K1(this.strategy_, varargin{:});
