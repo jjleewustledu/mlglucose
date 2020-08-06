@@ -233,6 +233,8 @@ classdef Huang1980Model
             if Dt ~= 0
                 times = 0:length(ipr.aif)-1;
                 aif = pchip(times+Dt, ipr.aif, times);
+            else
+                aif = ipr.aif;
             end
             fdg = mlglucose.Huang1980Model.sampled(ks, ipr.v1, aif, this.times_sampled);
         end
