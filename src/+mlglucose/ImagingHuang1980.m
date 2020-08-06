@@ -1,5 +1,6 @@
 classdef ImagingHuang1980 < handle & matlab.mixin.Copyable 
-	%% IMAGINGHUANG1980  
+	%% IMAGINGHUANG1980     
+    %  For performance considerations, see also https://blogs.mathworks.com/loren/2012/03/26/considering-performance-in-object-oriented-matlab-code/
 
 	%  $Revision$
  	%  was created 28-Apr-2020 23:53:00 by jjlee,
@@ -7,8 +8,8 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
  	%% It was developed on Matlab 9.7.0.1319299 (R2019b) Update 5 for MACI64.  Copyright 2020 John Joowon Lee.
  	 	
 	properties (Constant)
-        JITTER = 0.01 % > 0 to aid deep learning
         HALFLIFE = 6586.272; % s
+        JITTER = 0.0 % > 0 to aid deep learning
         MAX_NORMAL_BACKGROUND = 20 % Bq/mL
         MIN_V1 = 0.001; % fraction
     end
@@ -80,18 +81,6 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
     end
     
     methods
-        function this = ensureModel(this)
-            if isempty(this.model)                               
-                map = mlglucose.Huang1980Model.preferredMap();
-                this.model = mlglucose.Huang1980Model( ...
-                    'map', map, ...
-                    'times_sampled', this.times_sampled, ...
-                    'artery_interpolated', this.artery_plasma_interpolated, ...
-                    'glc', this.glc, ...
-                    'hct', this.hct, ...
-                    'LC', this.LC);
-            end            
-        end
         function [ic,nic] = buildMeanAbsError(this)
             % @return \Sigma_i activity_i \frac{tau_i}/{T}
             
@@ -103,20 +92,17 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
             fdgDCorr = sesd.fdgOnAtlas('typ', 'mlfourd.ImagingContext2');
             
             % MAE
-            this.meanAbsError = abs(copy(this.residual));
-            this.meanAbsError = this.meanAbsError.timeAveraged('taus', this.taus);
-            this.meanAbsError.fileprefix = [this.fdg.fileprefix this.regionTag '_MAE'];
-            ic = this.meanAbsError;
+            ic = abs(copy(this.residual));
+            ic = ic.timeAveraged('taus', this.taus);
             ic.fileprefix = [fdgDCorr.fileprefix this.regionTag '_MAE'];
+            this.meanAbsError = ic;
             
             % NMAE
-            fdgTimeAverage = copy(this.fdg);
-            fdgTimeAverage = fdgTimeAverage.timeAveraged();
-            this.normMeanAbsError = copy(this.meanAbsError);            
-            this.normMeanAbsError = this.meanAbsError ./ fdgTimeAverage;
-            this.normMeanAbsError.fileprefix = [this.fdg.fileprefix this.regionTag '_NMAE'];
-            nic = this.normMeanAbsError;
+            fdgAvgt = copy(fdgDCorr);
+            fdgAvgt = fdgAvgt.timeAveraged('taus', this.taus);         
+            nic = copy(this.meanAbsError) ./ fdgAvgt;
             nic.fileprefix = [fdgDCorr.fileprefix this.regionTag '_NMAE'];
+            this.normMeanAbsError = nic;
         end
         function ic = buildPrediction(this, varargin)
             %% @param reuseExisting is logical; default is false.
@@ -178,6 +164,19 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
             fdgDCorr = sesd.fdgOnAtlas('typ', 'mlfourd.ImagingContext2');
             ic = this.prediction - fdgDCorr;
             ic.fileprefix = [fdgDCorr.fileprefix this.regionTag  '_residual'];
+            this.residual = ic;
+        end
+        function this = ensureModel(this)
+            if isempty(this.model)                               
+                map = mlglucose.Huang1980Model.preferredMap();
+                this.model = mlglucose.Huang1980Model( ...
+                    'map', map, ...
+                    'times_sampled', this.times_sampled, ...
+                    'artery_interpolated', this.artery_plasma_interpolated, ...
+                    'glc', this.glc, ...
+                    'hct', this.hct, ...
+                    'LC', this.LC);
+            end            
         end
         function this = solve(this)
             fdg_img_2d = this.projectedFdgArray();
