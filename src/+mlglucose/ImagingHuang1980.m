@@ -97,6 +97,7 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
             this.meanAbsError = this.meanAbsError.timeAveraged('taus', this.taus);
             this.meanAbsError.fileprefix = [this.fdg.fileprefix this.regionTag '_MAE'];
             ic = this.meanAbsError;
+            ic.fileprefix = [fdgDCorr.fileprefix this.regionTag '_MAE'];
             
             % NMAE
             fdgTimeAverage = copy(this.fdg);
@@ -105,6 +106,7 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
             this.normMeanAbsError = this.meanAbsError ./ fdgTimeAverage;
             this.normMeanAbsError.fileprefix = [this.fdg.fileprefix this.regionTag '_NMAE'];
             nic = this.normMeanAbsError;
+            nic.fileprefix = [fdgDCorr.fileprefix this.regionTag '_NMAE'];
         end
         function ic = buildPrediction(this, varargin)
             %% @param reuseExisting is logical; default is false.
@@ -122,6 +124,7 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
             fdg_ifc.fileprefix = [fdg_ifc.fileprefix this.regionTag '_predicted'];
             if ipr.reuseExisting && isfile(fdg_ifc.fqfilename)
                 ic = mlfourd.ImagingContext2(fdg_ifc.fqfilename);
+            fileprefix0 = [working_ifc.fileprefix this.regionTag '_predicted'];
                 this.prediction = ic;
                 return
             end
@@ -159,6 +162,7 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
             this.residual = this.fdg - this.prediction;
             this.residual.fileprefix = [this.fdg.fileprefix this.regionTag '_residual'];
             ic = this.residual;
+            ic.fileprefix = [fdgDCorr.fileprefix this.regionTag  '_residual'];
         end
         function this = solve(this)
             fdg_img_2d = this.projectedFdgArray();
@@ -250,6 +254,7 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
             addParameter(ip, 'blur', 4.3, @isnumeric)
             addParameter(ip, 'regionTag', '_brain', @ischar)
             parse(ip, varargin{:})
+            addParameter(ip, 'regionTag', '', @ischar)
             ipr = ip.Results;
             
             this.blur = ipr.blur;
