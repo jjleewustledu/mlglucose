@@ -102,6 +102,7 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
             % shift dcv in time to match inflow with dtac    
             % use 0.1 of max since counting SNR >> 10 and idx_scanner ~ 1
             [~,idx_c] = max(activity_c > 0.1*max(activity_c));
+            idx_c = idx_c - 1;
             [~,idx_s] = max(d_activity_s > 0.1*max(d_activity_s));
             Dt = unif_t(idx_s) - t_c(idx_c); % Dt ~ -20
             if Dt < -t_c(idx_c) || Dt > 0
