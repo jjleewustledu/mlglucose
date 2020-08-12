@@ -20,7 +20,7 @@ classdef Huang1980Model
     
     methods (Static)
         function qs       = solution(ks, v1, artery_interpolated)
-            %  @param artery_interpolated is uniformly sampled with at high sampling freq. starting at time = 0.
+            %  @param artery_interpolated is uniformly with at high sampling freq. starting at time = 0.
             
             k1 = ks(1);
             k2 = ks(2);
@@ -45,7 +45,7 @@ classdef Huang1980Model
             qs = v1 * (artery_interpolated + scale * (q2 + q3));            
         end
         function qs       = sampled(ks, v1, artery_interpolated, times_sampled)
-            %  @param artery_interpolated is uniformly sampled with at high sampling freq.
+            %  @param artery_interpolated is uniformly sampled at high sampling freq.
             %  @param times_sampled are samples scheduled by the time-resolved PET reconstruction
             
             import mlglucose.Huang1980Model.solution  

@@ -149,6 +149,14 @@ classdef Huang1980 < handle & matlab.mixin.Copyable
         function [k,sk] = k4(this, varargin)
             [k,sk] = k4(this.strategy_, varargin{:});
         end
+        function [K,sK] = Ks(this, varargin)
+            K = zeros(1,4);
+            sK = zeros(1,4);
+            [K(1),sK(1)] = K1(this.strategy_, varargin{:});
+            [K(2),sK(2)] = k2(this.strategy_, varargin{:});
+            [K(3),sK(3)] = k3(this.strategy_, varargin{:});
+            [K(4),sK(4)] = k4(this.strategy_, varargin{:});
+        end
         function [k,sk] = ks(this, varargin)
             k = zeros(1,4);
             sk = zeros(1,4);

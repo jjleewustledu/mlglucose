@@ -10,6 +10,7 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
 	properties (Constant)
         HALFLIFE = 6586.272; % s
         JITTER = 0.0 % > 0 to aid deep learning
+        LENK = 4
         MAX_NORMAL_BACKGROUND = 20 % Bq/mL
         MIN_V1 = 0.001; % fraction
     end
@@ -129,8 +130,8 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
             end            
             
             % represent prediction in R^2:  voxels^1 (x) times            
-            ks_ = zeros(this.Nroi,5);
-            for ik = 1:5     
+            ks_ = zeros(this.Nroi,this.LENK+1);
+            for ik = 1:this.LENK+1     
                 rate = this.ks.fourdfp.img(:,:,:,ik);                
                 ks_(:, ik) = rate(this.roibin);
             end
@@ -300,8 +301,8 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
             that = copyElement@matlab.mixin.Copyable(this);
         end
         function ic = invProjectedKsArray(this, arr)
-            img = zeros([size(this.roibin) 4]);
-            for ik = 1:4
+            img = zeros([size(this.roibin) this.LENK]);
+            for ik = 1:this.LENK
                 cube = img(:,:,:,ik);
                 cube(this.roibin) = arr(:,ik); 
                 img(:,:,:,ik) = cube;
