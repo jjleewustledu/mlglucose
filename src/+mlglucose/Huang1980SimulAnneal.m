@@ -100,11 +100,12 @@ classdef Huang1980SimulAnneal < mloptimization.SimulatedAnnealing & mlglucose.Hu
             disp(this.results_.output.temperature)
         end
         function fprintfModel(this)
-            fprintf('Model:\n');
+            fprintf('Simulated Annealing:\n');
             for ky = 1:length(this.ks)
                 fprintf('\tk%i = %f\n', ky, this.ks(ky));
             end
             fprintf('\tsigma0 = %f\n', this.sigma0);
+            fprintf('\tv1 = %f\n', this.v1);
             for ky = this.map.keys
                 fprintf('\tmap(''%s'') => %s\n', ky{1}, struct2str(this.map(ky{1})));
             end
@@ -126,14 +127,33 @@ classdef Huang1980SimulAnneal < mloptimization.SimulatedAnnealing & mlglucose.Hu
         function [k,sk] = k4(this, varargin)
             [k,sk] = find_result(this, 'k4');
         end     
-        function plot(this)
-            figure
-            plot(this.times_sampled, this.Measurement, 'o', ...
-                 this.times_sampled, this.model.sampled(this.ks, this.v1, this.artery_interpolated, this.times_sampled), '-')
-            legend('measurement', 'estimation')
+        function h = plot(this, varargin)
+            ip = inputParser;
+            addParameter(ip, 'showAif', true, @islogical)
+            addParameter(ip, 'xlim', [], @isnumeric)            
+            addParameter(ip, 'ylim', [], @isnumeric)
+            parse(ip, varargin{:})
+            ipr = ip.Results;
+            
+            aif = this.artery_interpolated;
+            h = figure;
+            times = this.times_sampled;
+            if ipr.showAif
+                plot(times, this.Measurement, ':o', ...
+                    times, this.model.sampled(this.ks, this.v1, aif, times), '-', ...
+                    0:length(aif)-1, this.v1*aif, '--')                
+                legend('measurement', 'estimation', 'aif')
+            else
+                plot(times, this.Measurement, 'o', ...
+                    times, this.model.sampled(this.ks, this.v1, aif, times), '-')                
+                legend('measurement', 'estimation')
+            end
+            if ~isempty(ipr.xlim); xlim(ipr.xlim); end
+            if ~isempty(ipr.ylim); ylim(ipr.ylim); end
             xlabel('times / s')
             ylabel('activity / (Bq/mL)')
-            annotation('textbox', [.175 .25 .3 .3], 'String', sprintfModel(this), 'FitBoxToText', 'on')
+            annotation('textbox', [.175 .25 .3 .3], 'String', sprintfModel(this), 'FitBoxToText', 'on', 'FontSize', 7, 'LineStyle', 'none')
+            title('Huang1980SimulAnneal.plot()')
         end 
         function        save(this)
             save([this.fileprefix '.mat'], this);
@@ -179,11 +199,12 @@ classdef Huang1980SimulAnneal < mloptimization.SimulatedAnnealing & mlglucose.Hu
             end
         end 
         function s    = sprintfModel(this)
-            s = sprintf('Model:\n');
+            s = sprintf('Simulated Annealing:\n');
             for ky = 1:length(this.ks)
                 s = [s sprintf('\tk%i = %f\n', ky, this.ks(ky))]; %#ok<AGROW>
             end
             s = [s sprintf('\tsigma0 = %f\n', this.sigma0)];
+            s = [s sprintf('\tv1 = %f\n', this.v1)];
             for ky = this.map.keys
                 s = [s sprintf('\tmap(''%s'') => %s\n', ky{1}, struct2str(this.map(ky{1})))]; %#ok<AGROW>
             end

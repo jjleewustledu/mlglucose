@@ -165,6 +165,9 @@ classdef Huang1980 < handle & matlab.mixin.Copyable
             [k(3),sk(3)] = k3(this.strategy_, varargin{:});
             [k(4),sk(4)] = k4(this.strategy_, varargin{:});
         end
+        function h = plot(this, varargin)
+            h = this.strategy_.plot(varargin{:});
+        end
         function this = simulated(this, varargin)
             this.measurement = this.model.simulated(varargin{:});
             this.strategy_.Measurement = this.measurement; % strategy_ needs value copies for performance
