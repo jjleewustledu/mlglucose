@@ -172,9 +172,6 @@ classdef Huang1980 < handle & matlab.mixin.Copyable
         function this = solve(this, varargin)
             this.strategy_ = solve(this.strategy_, varargin{:});
         end
-        function [t,st] = t0(this, varargin)
-            [t,st] = t0(this.strategy_, varargin{:});
-        end
     end
     
     %% PROTECTED
