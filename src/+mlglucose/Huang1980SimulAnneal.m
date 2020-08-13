@@ -130,7 +130,7 @@ classdef Huang1980SimulAnneal < mloptimization.SimulatedAnnealing & mlglucose.Hu
         function h = plot(this, varargin)
             ip = inputParser;
             addParameter(ip, 'showAif', true, @islogical)
-            addParameter(ip, 'xlim', [], @isnumeric)            
+            addParameter(ip, 'xlim', [-20 1800], @isnumeric)            
             addParameter(ip, 'ylim', [], @isnumeric)
             parse(ip, varargin{:})
             ipr = ip.Results;
@@ -142,7 +142,7 @@ classdef Huang1980SimulAnneal < mloptimization.SimulatedAnnealing & mlglucose.Hu
                 plot(times, this.Measurement, ':o', ...
                     times, this.model.sampled(this.ks, this.v1, aif, times), '-', ...
                     0:length(aif)-1, this.v1*aif, '--')                
-                legend('measurement', 'estimation', 'aif')
+                legend('measurement', 'estimation', 'v1*aif')
             else
                 plot(times, this.Measurement, 'o', ...
                     times, this.model.sampled(this.ks, this.v1, aif, times), '-')                

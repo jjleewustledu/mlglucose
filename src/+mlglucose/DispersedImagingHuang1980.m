@@ -168,6 +168,8 @@ classdef DispersedImagingHuang1980 < handle & matlab.mixin.Copyable
             this.residual = ic;
         end
         function this = ensureModel(this)
+            %% without voxelwise adjustments of AIF timings  
+            
             if isempty(this.model)                               
                 map = mlglucose.DispersedHuang1980Model.preferredMap();
                 this.model = mlglucose.DispersedHuang1980Model( ...
