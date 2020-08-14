@@ -29,13 +29,17 @@ classdef DispersedImagingHuang1980 < handle & matlab.mixin.Copyable
         normMeanAbsError
         Nroi
         prediction
-        regionTag
         residual
         roi
         roibin % is logical
         taus
  		times_sampled
         v1
+    end
+    
+    properties (Dependent)
+        regionTag
+        sessionData
     end
     
     methods (Static)
@@ -82,6 +86,18 @@ classdef DispersedImagingHuang1980 < handle & matlab.mixin.Copyable
     end
     
     methods
+        
+        %% GET
+        
+        function g = get.regionTag(this)
+            g = this.sessionData.regionTag;
+        end
+        function g = get.sessionData(this)
+            g = this.devkit.sessionData;
+        end
+        
+        %%
+        
         function [ic,nic] = buildMeanAbsError(this)
             % @return \Sigma_i activity_i \frac{tau_i}/{T}
             
@@ -258,8 +274,7 @@ classdef DispersedImagingHuang1980 < handle & matlab.mixin.Copyable
             %  @param roi is understood by mlfourd.ImagingContext2.
             %  @param glc
             %  @param hct
-            %  @param LC, default := 0.81.   
-            %  @param regionTag is char.
+            %  @param LC, default := 0.81. 
             
             ip = inputParser;
             ip.KeepUnmatched = true;
@@ -273,7 +288,6 @@ classdef DispersedImagingHuang1980 < handle & matlab.mixin.Copyable
             addParameter(ip, 'glc', @isnumeric)
             addParameter(ip, 'hct', @isnumeric)
             addParameter(ip, 'LC', 0.81, @isnumeric)
-            addParameter(ip, 'regionTag', '', @ischar)
             parse(ip, devkit, varargin{:})
             ipr = ip.Results;
             
@@ -299,7 +313,6 @@ classdef DispersedImagingHuang1980 < handle & matlab.mixin.Copyable
             this.Nroi = dipsum(this.roibin);
             this.glc = ipr.glc;
             this.LC = ipr.LC;
-            this.regionTag = ipr.regionTag;
         end
         function that = copyElement(this)
             %%  See also web(fullfile(docroot, 'matlab/ref/matlab.mixin.copyable-class.html'))

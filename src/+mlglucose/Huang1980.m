@@ -32,7 +32,6 @@ classdef Huang1980 < handle & matlab.mixin.Copyable
             %  @param LC is numeric, default from mlglucose.Huang1980Model.
             %  @param sigma0, default from mloptimization.SimulatedAnnealing.
             %  @param fileprefix, default from devkit.
-            %  @param regionTag is char.
             
             ip = inputParser;
             ip.KeepUnmatched = true;
@@ -189,13 +188,12 @@ classdef Huang1980 < handle & matlab.mixin.Copyable
             ip.KeepUnmatched = true;
             addRequired(ip, 'devkit', @(x) isa(x, 'mlpet.IDeviceKit'))
             addParameter(ip, 'Dt', 0, @isscalar)
-            addParameter(ip, 'regionTag', '', @ischar)
             parse(ip, devkit, varargin{:})
             ipr = ip.Results;
             
             this.devkit = ipr.devkit;
             this.Dt = ipr.Dt;
-            this.regionTag = ipr.regionTag;
+            this.regionTag = this.devkit.sessionData.regionTag;
         end
         function that = copyElement(this)
             %%  See also web(fullfile(docroot, 'matlab/ref/matlab.mixin.copyable-class.html'))
