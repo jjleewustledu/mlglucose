@@ -17,7 +17,7 @@ classdef DispersedNumericHuang1980 < handle & mlglucose.Huang1980
     end
     
     methods (Static)
-        function this = createFromDeviceKit(devkit, varargin)
+        function [this,fdg] = createFromDeviceKit(devkit, varargin)
             %% adjusts AIF timings for coincidence of inflow with tissue activity from scanner
             %  @param required devkit is mlpet.IDeviceKit.
             %  @param
@@ -33,6 +33,8 @@ classdef DispersedNumericHuang1980 < handle & mlglucose.Huang1980
             %  @param sigma0, default from mloptimization.SimulatedAnnealing.
             %  @param fileprefix, default from devkit.
             %  @param blurFdg := {[], 0, 4.3, ...}
+            %  @return this.
+            %  @return fdg, blurred by ipr.blurFdg.
             
             ip = inputParser;
             ip.KeepUnmatched = true;
