@@ -1,5 +1,5 @@
-classdef Huang1980SimulAnneal < mloptimization.SimulatedAnnealing & mlglucose.Huang1980Strategy
-	%% HUANG1980SIMULANNEAL operates on single voxels.
+classdef Huang1980SimulAnneal < mlpet.TracerSimulatedAnnealing & mlglucose.Huang1980Strategy
+	%% HUANG1980SIMULANNEAL operates on single voxels/regions.
 
 	%  $Revision$
  	%  was created 03-Jan-2020 17:45:56 by jjlee,
@@ -7,77 +7,28 @@ classdef Huang1980SimulAnneal < mloptimization.SimulatedAnnealing & mlglucose.Hu
  	%% It was developed on Matlab 9.7.0.1261785 (R2019b) Update 3 for MACI64.  Copyright 2020 John Joowon Lee.
  	
     properties
-        artery_interpolated
-        ks0
-        ks_lower
-        ks_upper
-        quiet = false
-        v1                   % blood volume fraction
-        visualize = false
-        visualize_anneal = false
+        v1 % blood volume fraction
     end
-    
-	properties (Dependent)   
-        ks
-        results
- 	end
     
     methods (Static)
         function loss = loss_function(ks, v1, artery_interpolated, times_sampled, measurement, sigma0)
             import mlglucose.Huang1980Model.sampled            
             estimation  = sampled(ks, v1, artery_interpolated, times_sampled);
-            positive    = measurement > 0;
-            measurement = measurement(positive);
-            eoverm      = estimation(positive)./measurement;
+            positive    = measurement > 0.05*max(measurement);
+            eoverm      = estimation(positive)./measurement(positive);
             Q           = sum((1 - eoverm).^2);
             loss        = 0.5*Q/sigma0^2; % + sum(log(sigma0*measurement)); % sigma ~ sigma0*measurement
-        end   
-        function conc = slide_fast(conc, Dt)
-            %% SLIDE_FAST slides discretized function conc(t) to conc(t - Dt);
-            %  @param conc is row vector without NaN.
-            %  @param t is row vector with same size as conc.
-            %  @param Dt is scalar rounded to integer.
-            %
-            %  Dt > 0 will slide conc(t) towards later times t.
-            %  Dt < 0 will slide conc(t) towards earlier times t.
-            
-            Dt = round(Dt);
-            if Dt == 0
-                return
-            end
-            if Dt < 0
-                T = length(conc);
-               conc_ = conc(end)*ones(1, length(conc));
-               conc_(1:T+Dt) = conc(1-Dt:end);
-               conc = conc_;
-               return
-            end
-            conc_ = zeros(size(conc));
-            conc_(1+Dt:end) = conc(1:end-Dt);
-            conc = conc_;
         end
     end
 
-	methods 
-        
-        %% GET
-        
-        function g = get.ks(this)
-            g = this.results_.ks;
-        end
-        function g = get.results(this)
-            g = this.results_;
-        end
-        
-        %%
-        
+	methods        
  		function this = Huang1980SimulAnneal(varargin)
  			%% HUANG1980SIMULANNEAL
             %  @param context is mlglucose.Huang1980.
             %  @param sigma0.
             %  @param fileprefix.
             
-            this = this@mloptimization.SimulatedAnnealing(varargin{:});
+            this = this@mlpet.TracerSimulatedAnnealing(varargin{:});
                       
             [this.ks_lower,this.ks_upper,this.ks0] = remapper(this);
             this.artery_interpolated = this.model.artery_interpolated;
@@ -87,7 +38,6 @@ classdef Huang1980SimulAnneal < mloptimization.SimulatedAnnealing & mlglucose.Hu
         function disp(this)
             fprintf('\n')
             fprintf(class(this))
-            fprintf('         v1: '); disp(this.v1)
             if isempty(this.results_)
                 return
             end
@@ -123,10 +73,10 @@ classdef Huang1980SimulAnneal < mloptimization.SimulatedAnnealing & mlglucose.Hu
         end
         function [k,sk] = k3(this, varargin)
             [k,sk] = find_result(this, 'k3');
-        end
+        end    
         function [k,sk] = k4(this, varargin)
             [k,sk] = find_result(this, 'k4');
-        end     
+        end        
         function h = plot(this, varargin)
             ip = inputParser;
             addParameter(ip, 'showAif', true, @islogical)
@@ -197,7 +147,7 @@ classdef Huang1980SimulAnneal < mloptimization.SimulatedAnnealing & mlglucose.Hu
             if this.visualize
                 plot(this)
             end
-        end 
+        end         
         function s    = sprintfModel(this)
             s = sprintf('Simulated Annealing:\n');
             for ky = 1:length(this.ks)
@@ -209,32 +159,8 @@ classdef Huang1980SimulAnneal < mloptimization.SimulatedAnnealing & mlglucose.Hu
                 s = [s sprintf('\tmap(''%s'') => %s\n', ky{1}, struct2str(this.map(ky{1})))]; %#ok<AGROW>
             end
         end
-    end 
-    
-    %% PROTECTED
-    
-    properties (Access = protected)        
-        results_
-    end
-    
-    methods (Access = protected)
-        function [m,sd] = find_result(this, lbl)
-            ks_ = this.ks;
-            assert(strcmp(lbl(1), 'k'))
-            ik = str2double(lbl(2));
-            m = ks_(ik);
-            sd = 0;
-        end
-        function [lb,ub,ks0] = remapper(this)
-            for i = 1:this.map.Count
-                lbl = sprintf('k%i', i);
-                lb(i)  = this.map(lbl).min; %#ok<AGROW>
-                ub(i)  = this.map(lbl).max; %#ok<AGROW>
-                ks0(i) = this.map(lbl).init; %#ok<AGROW>
-            end
-        end
     end
 
 	%  Created with Newcl by John J. Lee after newfcn by Frank Gonzalez-Morphy
- end
+end
 

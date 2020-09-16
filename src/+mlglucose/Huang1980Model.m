@@ -1,7 +1,7 @@
 classdef Huang1980Model
 	%% HUANG1980MODEL provides model data and methods to the strategy design pattern comprising
     %  mlglucose.{Huang1980, Huang1980Nest, Huang1980SimulAnneal, Huang1980HMC, Huang1980 LM, Huang1980BFGS}.
-    %  It operates on single voxels.
+    %  It operates on single voxels or regions.
 
 	%  $Revision$
  	%  was created 10-Apr-2020 17:55:02 by jjlee,

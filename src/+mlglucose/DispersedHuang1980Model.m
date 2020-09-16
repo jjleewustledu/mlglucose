@@ -1,7 +1,7 @@
 classdef DispersedHuang1980Model
 	%% DISPERSEDHUANG1980MODEL provides model data and methods to the strategy design pattern comprising
     %  mlglucose.{Huang1980, DispersedHuang1980SimulAnneal}.
-    %  It operates on single voxels.  It includes a dispersion parameter $\Delta$:
+    %  It operates on single voxels or regions.  It includes a dispersion parameter $\Delta$:
     %  aif_\text{disp}(t) = aif(t) \otimes e^{-\Delta t}.
 
 	%  $Revision$
@@ -116,7 +116,7 @@ classdef DispersedHuang1980Model
         
         function fdg  = simulated(this, varargin)
             %% SIMULATED simulates tissue activity with passed and internal parameters.
-            %  @param required ks is [k1 k2 k3 k4 Dt].
+            %  @param required ks is [k1 k2 k3 k4 k5 Dt].
             %  @param v1 is CBV < 1 and dimensionless; default is this.v1.
             %  @param aif is numeric; default is this.artery_interpolated for model state.
             %  @param Dt is numeric, in sec.

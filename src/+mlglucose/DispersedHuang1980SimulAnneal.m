@@ -10,9 +10,8 @@ classdef DispersedHuang1980SimulAnneal < mlglucose.Huang1980SimulAnneal
         function loss = loss_function(ks, v1, artery_interpolated, times_sampled, measurement, sigma0)
             import mlglucose.DispersedHuang1980Model.sampled            
             estimation  = sampled(ks, v1, artery_interpolated, times_sampled);
-            positive    = measurement > 0;
-            measurement = measurement(positive);
-            eoverm      = estimation(positive)./measurement;
+            positive    = measurement > 0.05*max(measurement);
+            eoverm      = estimation(positive)./measurement(positive);
             Q           = sum((1 - eoverm).^2);
             loss        = 0.5*Q/sigma0^2; % + sum(log(sigma0*measurement)); % sigma ~ sigma0*measurement
         end 
@@ -20,14 +19,48 @@ classdef DispersedHuang1980SimulAnneal < mlglucose.Huang1980SimulAnneal
 
 	methods		  
  		function this = DispersedHuang1980SimulAnneal(varargin)
- 			%% DISPERSEDHUANG1980SIMULANNEAL
- 			%  @param .
-
  			this = this@mlglucose.Huang1980SimulAnneal(varargin{:});
         end
         
         function [k,sk] = k5(this, varargin)
             [k,sk] = find_result(this, 'k5');
+        end 
+        function this = solve(this, varargin)
+            import mlglucose.DispersedHuang1980SimulAnneal.loss_function   
+            options_fmincon = optimoptions('fmincon', ...
+                'FunctionTolerance', 1e-9, ...
+                'OptimalityTolerance', 1e-9);
+            if this.visualize_anneal
+                options = optimoptions('simulannealbnd', ...
+                    'AnnealingFcn', 'annealingboltz', ...
+                    'FunctionTolerance', eps, ...
+                    'HybridFcn', {@fmincon, options_fmincon}, ...
+                    'InitialTemperature', 20, ...
+                    'ReannealInterval', 200, ...
+                    'TemperatureFcn', 'temperatureexp', ...
+                    'Display', 'diagnose', ...
+                    'PlotFcns', {@saplotbestx,@saplotbestf,@saplotx,@saplotf,@saplotstopping,@saplottemperature});
+            else
+                options = optimoptions('simulannealbnd', ...
+                    'AnnealingFcn', 'annealingboltz', ...
+                    'FunctionTolerance', eps, ...
+                    'HybridFcn', {@fmincon, options_fmincon}, ...
+                    'InitialTemperature', 20, ...
+                    'ReannealInterval', 200, ...
+                    'TemperatureFcn', 'temperatureexp');
+            end
+ 			[ks_,sse,exitflag,output] = simulannealbnd( ...
+                @(ks__) loss_function( ...
+                       ks__, double(this.v1), this.artery_interpolated, this.times_sampled, double(this.Measurement), this.sigma0), ...
+                this.ks0, this.ks_lower, this.ks_upper, options); 
+            
+            this.results_ = struct('ks0', this.ks0, 'ks', ks_, 'sse', sse, 'exitflag', exitflag, 'output', output); 
+            if ~this.quiet
+                fprintfModel(this)
+            end
+            if this.visualize
+                plot(this)
+            end
         end   
  	end 
 

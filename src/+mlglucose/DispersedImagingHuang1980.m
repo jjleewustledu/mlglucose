@@ -1,5 +1,6 @@
 classdef DispersedImagingHuang1980 < handle & matlab.mixin.Copyable 
-	%% DISPERSEDIMAGINGHUANG1980     
+	%% DISPERSEDIMAGINGHUANG1980 
+    %  builds Huang models for imaging voxels.    
     %  For performance considerations, see also https://blogs.mathworks.com/loren/2012/03/26/considering-performance-in-object-oriented-matlab-code/
 
 	%  $Revision$

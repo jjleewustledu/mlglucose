@@ -1,5 +1,6 @@
 classdef NumericHuang1980 < handle & mlglucose.Huang1980
 	%% NUMERICHUANG1980 
+    %  builds Huang models for regions such as FreeSurfer regions.
 
 	%  $Revision$
  	%  was created 29-Apr-2020 23:31:01 by jjlee,
@@ -10,22 +11,24 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
     end
     
     methods (Static)
-        function this = createFromDeviceKit(devkit, varargin)
+        function [this,fdg] = createFromDeviceKit(devkit, varargin)
             %% adjusts AIF timings for coincidence of inflow with tissue activity from scanner
             %  @param required devkit is mlpet.IDeviceKit.
-            %  @param
             %  @param fdg is numeric, default from devkit.
+            %  @param roi ...
             %  @param solver is in {'nest' 'simulanneal' 'hmc' 'lm' 'bfgs'}, default := 'simulanneal'.
-            %  @param map, default := mlglucose.Huang1980Model.preferredMap().
             %  @param cbv is numeric or understood by mlfourd.ImagingContext2.
+            %  @param blurFdg := {[], 0, 4.3, ...}                       
+            %  @param map, default := mlglucose.Huang1980Model.preferredMap().
             %  @param times_sampled non-uniformly scheduled by the time-resolved PET reconstruction.
             %  @param artery_interpolated, default from devkit.
             %  @param glc is numeric, default from devkit.
             %  @param hct is numeric, default from devkit.
-            %  @param LC is numeric, default from mlglucose.Huang1980Model
+            %  @param LC is numeric, default from mloxygen.Raichle1983Model
             %  @param sigma0, default from mloptimization.SimulatedAnnealing.
             %  @param fileprefix, default from devkit.
-            %  @param blurFdg := {[], 0, 4.3, ...}
+            %  @return this.
+            %  @return fdg, blurred by ipr.blurFdg.
             
             ip = inputParser;
             ip.KeepUnmatched = true;
@@ -119,16 +122,14 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
             %  @param required devkit is mlpet.IDeviceKit.
             %  @param fdg is numeric.
             %  @param solver is in {'nest' 'simulanneal' 'hmc' 'lm' 'bfgs'}.
-            %  @param map
-            %  @param v1
+            %  @param map, default := mlglucose.Huang1980Model.preferredMap().
             %  @param times_sampled non-uniformly scheduled by the time-resolved PET reconstruction.
-            %  @param artery_interpolated
-            %  @param Dt is numeric, s of time-shifting for AIF.
-            %  @param glc is numeric, mmol/L.
-            %  @param hct is numeric, percent.
-            %  @param LC is numeric.
-            %  @param sigma0.
-            %  @param fileprefix.
+            %  @param artery_interpolated, default from devkit.
+            %  @param glc is numeric, default from devkit.
+            %  @param hct is numeric, default from devkit.
+            %  @param LC is numeric, default from mloxygen.Raichle1983Model
+            %  @param sigma0, default from mloptimization.SimulatedAnnealing.
+            %  @param fileprefix, default from devkit.
 
  			this = this@mlglucose.Huang1980(devkit, varargin{:});	
             

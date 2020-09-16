@@ -20,11 +20,12 @@ classdef Huang1980 < handle & matlab.mixin.Copyable
         function this = createFromDeviceKit(devkit, varargin)
             %% 
             %  @param required devkit is mlpet.IDeviceKit.
-            %  @param
+            %  @param Dt is numeric, s of time-shifting for AIF.
             %  @param fdg is numeric, default from devkit.
+            %  @param cbv is numeric.
             %  @param solver is in {'nest' 'simulanneal' 'hmc' 'lm' 'bfgs'}, default := 'simulanneal'.
+            %  @param roi ...
             %  @param map, default := mlglucose.Huang1980Model.preferredMap().
-            %  @param v1 is numeric.
             %  @param times_sampled non-uniformly scheduled by the time-resolved PET reconstruction.
             %  @param artery_interpolated, default from devkit.
             %  @param glc is numeric, default from devkit.
@@ -32,6 +33,7 @@ classdef Huang1980 < handle & matlab.mixin.Copyable
             %  @param LC is numeric, default from mlglucose.Huang1980Model.
             %  @param sigma0, default from mloptimization.SimulatedAnnealing.
             %  @param fileprefix, default from devkit.
+            %  @return this.
             
             ip = inputParser;
             ip.KeepUnmatched = true;
@@ -183,7 +185,10 @@ classdef Huang1980 < handle & matlab.mixin.Copyable
     end
     
     methods (Access = protected)
-        function this = Huang1980(devkit, varargin)
+        function this = Huang1980(devkit, varargin)            
+            %  @param required devkit is mlpet.IDeviceKit.
+            %  @param Dt is numeric, s of time-shifting for AIF.
+            
             ip = inputParser;            
             ip.KeepUnmatched = true;
             addRequired(ip, 'devkit', @(x) isa(x, 'mlpet.IDeviceKit'))

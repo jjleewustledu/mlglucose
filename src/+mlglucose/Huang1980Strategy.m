@@ -1,5 +1,5 @@
 classdef (Abstract) Huang1980Strategy 
-	%% HUANG1980STRATEGY is the interface for concrete strategies used with mlglucose.Huang.
+	%% HUANG1980STRATEGY is the interface for concrete strategies used with mlglucose.Huang1980.
 
 	%  $Revision$
  	%  was created 10-Apr-2020 17:38:15 by jjlee,

@@ -20,19 +20,19 @@ classdef DispersedNumericHuang1980 < handle & mlglucose.Huang1980
         function [this,fdg] = createFromDeviceKit(devkit, varargin)
             %% adjusts AIF timings for coincidence of inflow with tissue activity from scanner
             %  @param required devkit is mlpet.IDeviceKit.
-            %  @param
             %  @param fdg is numeric, default from devkit.
+            %  @param roi ...
             %  @param solver is in {'nest' 'simulanneal' 'hmc' 'lm' 'bfgs'}, default := 'simulanneal'.
-            %  @param map, default := mlglucose.Huang1980Model.preferredMap().
             %  @param cbv is numeric or understood by mlfourd.ImagingContext2.
+            %  @param blurFdg := {[], 0, 4.3, ...}                       
+            %  @param map, default := mlglucose.Huang1980Model.preferredMap().
             %  @param times_sampled non-uniformly scheduled by the time-resolved PET reconstruction.
             %  @param artery_interpolated, default from devkit.
             %  @param glc is numeric, default from devkit.
             %  @param hct is numeric, default from devkit.
-            %  @param LC is numeric, default from mlglucose.Huang1980Model
+            %  @param LC is numeric, default from mloxygen.Raichle1983Model
             %  @param sigma0, default from mloptimization.SimulatedAnnealing.
             %  @param fileprefix, default from devkit.
-            %  @param blurFdg := {[], 0, 4.3, ...}
             %  @return this.
             %  @return fdg, blurred by ipr.blurFdg.
             
@@ -63,7 +63,7 @@ classdef DispersedNumericHuang1980 < handle & mlglucose.Huang1980
             
             % v1
             
-            fp = sprintf('mlglucose_Huang1980_createFromDeviceKit_dt%s', datestr(now, 'yyyymmddHHMMSS'));  
+            fp = sprintf('mlglucose_DispersedHuang1980_createFromDeviceKit_dt%s', datestr(now, 'yyyymmddHHMMSS'));  
             if isnumeric(ipr.cbv)
                 v1 = 0.0105*ipr.cbv;
             else
@@ -165,7 +165,7 @@ classdef DispersedNumericHuang1980 < handle & mlglucose.Huang1980
         end
         function fdg = checkSimulated(this, varargin)
             %% CHECKSIMULATED simulates tissue activity with passed and internal parameters without changing state.
-            %  @param required ks is [k1 k2 k3 k4 Dt].
+            %  @param required ks is [k1 k2 k3 k4 k5 Dt].
             %  @param v1 is CBV < 1 and dimensionless; default is this.v1.
             %  @param aif is numeric; default is this.artery_interpolated for model state.
             %  @return fdg simulation is numeric.
@@ -184,17 +184,15 @@ classdef DispersedNumericHuang1980 < handle & mlglucose.Huang1980
  			%% DISPERSEDNUMERICHUANG1980
             %  @param required devkit is mlpet.IDeviceKit.
             %  @param fdg is numeric.
-            %  @param solver is in {'nest' 'simulanneal' 'hmc' 'lm' 'bfgs'}.
-            %  @param map
-            %  @param v1
+            %  @param solver is in {'nest' 'simulanneal' 'hmc' 'lm' 'bfgs'}.            
+            %  @param map, default := mlglucose.Huang1980Model.preferredMap().
             %  @param times_sampled non-uniformly scheduled by the time-resolved PET reconstruction.
-            %  @param artery_interpolated
-            %  @param Dt is numeric, s of time-shifting for AIF.
-            %  @param glc is numeric, mmol/L.
-            %  @param hct is numeric, percent.
-            %  @param LC is numeric.
-            %  @param sigma0.
-            %  @param fileprefix.
+            %  @param artery_interpolated, default from devkit.
+            %  @param glc is numeric, default from devkit.
+            %  @param hct is numeric, default from devkit.
+            %  @param LC is numeric, default from mloxygen.Raichle1983Model
+            %  @param sigma0, default from mloptimization.SimulatedAnnealing.
+            %  @param fileprefix, default from devkit.
 
  			this = this@mlglucose.Huang1980(devkit, varargin{:});	
             
