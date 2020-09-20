@@ -44,9 +44,9 @@ classdef DispersedImagingHuang1980 < handle & matlab.mixin.Copyable
     end
     
     methods (Static)
-        function this = createFromDeviceKit(devkit, varargin)
+        function this = createFromDeviceKit(varargin)
             %% makes no adjustments of AIF timing
-            %  @param required devkit is mlpet.IDeviceKit.
+            %  @param devkit is mlpet.IDeviceKit.
             %  @param fdg is numeric, default from devkit.
             %  @param roi is understood by mlfourd.ImagingContext2.
             %  @param cbv is understood by mlfourd.ImagingContext2.
@@ -59,7 +59,7 @@ classdef DispersedImagingHuang1980 < handle & matlab.mixin.Copyable
             addParameter(ip, 'roi', [], @(x) ~isempty(x))
             addParameter(ip, 'cbv', [], @(x) ~isempty(x))
             addParameter(ip, 'blurFdg', 4.3, @isnumeric)
-            parse(ip, devkit, varargin{:})
+            parse(ip, varargin{:})
             ipr = ip.Results;
             
             % scanner provides calibrations, ancillary data
@@ -75,7 +75,7 @@ classdef DispersedImagingHuang1980 < handle & matlab.mixin.Copyable
             radm = counting.radMeasurements;
             
             this = mlglucose.DispersedImagingHuang1980( ...
-                devkit, ...
+                'devkit', devkit, ...
                 'fdg', fdg, ...
                 'taus', scanner.taus, ...
                 'times_sampled', scanner.timesMid, ...
@@ -265,9 +265,9 @@ classdef DispersedImagingHuang1980 < handle & matlab.mixin.Copyable
     %% PROTECTED
     
 	methods (Access = protected)
-        function this = DispersedImagingHuang1980(devkit, varargin)
+        function this = DispersedImagingHuang1980(varargin)
             %% DISPERSEDIMAGINGHUANG1980
-            %  @param required devkit is mlpet.IDeviceKit.
+            %  @param devkit is mlpet.IDeviceKit.
             %  @param fdg is understood by mlfourd.ImagingContext2.
             %  @param times_sampled from scanner is numeric.
             %  @param artery_sampled from counter is numeric.
@@ -279,7 +279,7 @@ classdef DispersedImagingHuang1980 < handle & matlab.mixin.Copyable
             
             ip = inputParser;
             ip.KeepUnmatched = true;
-            addRequired(ip, 'devkit', @(x) isa(x, 'mlpet.IDeviceKit'))
+            addParameter(ip, 'devkit', @(x) isa(x, 'mlpet.IDeviceKit'))
             addParameter(ip, 'fdg', [])
             addParameter(ip, 'taus', [], @isnumeric)
             addParameter(ip, 'times_sampled', [], @isnumeric)

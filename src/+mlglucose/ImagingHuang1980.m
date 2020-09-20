@@ -75,7 +75,7 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
             radm = counting.radMeasurements;
             
             this = mlglucose.ImagingHuang1980( ...
-                devkit, ...
+                'devkit', devkit, ...
                 'fdg', fdg, ...
                 'taus', scanner.taus, ...
                 'times_sampled', scanner.timesMid, ...
@@ -259,7 +259,7 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
     %% PROTECTED
     
 	methods (Access = protected)
-        function this = ImagingHuang1980(devkit, varargin)
+        function this = ImagingHuang1980(varargin)
             %% IMAGINGHUANG1980
             %  @param required devkit is mlpet.IDeviceKit.
             %  @param fdg is understood by mlfourd.ImagingContext2.
@@ -273,7 +273,7 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
             
             ip = inputParser;
             ip.KeepUnmatched = true;
-            addRequired(ip, 'devkit', @(x) isa(x, 'mlpet.IDeviceKit'))
+            addParameter(ip, 'devkit', @(x) isa(x, 'mlpet.IDeviceKit'))
             addParameter(ip, 'fdg', [])
             addParameter(ip, 'taus', [], @isnumeric)
             addParameter(ip, 'times_sampled', [], @isnumeric)
@@ -283,7 +283,7 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
             addParameter(ip, 'glc', @isnumeric)
             addParameter(ip, 'hct', @isnumeric)
             addParameter(ip, 'LC', 0.81, @isnumeric)
-            parse(ip, devkit, varargin{:})
+            parse(ip, varargin{:})
             ipr = ip.Results;
             
             this.devkit = ipr.devkit;
