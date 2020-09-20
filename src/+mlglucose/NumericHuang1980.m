@@ -74,7 +74,7 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
             radm = counting.radMeasurements;
             
             this = mlglucose.NumericHuang1980( ...
-                devkit, ...
+                'devkit', devkit, ...
                 'fdg', fdg, ...
                 'solver', 'simulanneal', ...
                 'v1', v1, ...
@@ -117,9 +117,9 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
     end
 
 	methods 		  
- 		function this = NumericHuang1980(devkit, varargin)
+ 		function this = NumericHuang1980(varargin)
  			%% NUMERICHUANG1980
-            %  @param required devkit is mlpet.IDeviceKit.
+            %  @param devkit is mlpet.IDeviceKit.
             %  @param fdg is numeric.
             %  @param solver is in {'nest' 'simulanneal' 'hmc' 'lm' 'bfgs'}.
             %  @param map, default := mlglucose.Huang1980Model.preferredMap().
@@ -131,7 +131,7 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
             %  @param sigma0, default from mloptimization.SimulatedAnnealing.
             %  @param fileprefix, default from devkit.
 
- 			this = this@mlglucose.Huang1980(devkit, varargin{:});	
+ 			this = this@mlglucose.Huang1980(varargin{:});	
             
             ip = inputParser;
             ip.KeepUnmatched = true;

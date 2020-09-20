@@ -1,4 +1,4 @@
-classdef Huang1980 < handle & matlab.mixin.Copyable 
+classdef Huang1980 < handle & mlpet.TracerKinetics
 	%% HUANG1980 is the context to a strategy design patterns which implements:
     %  mlglucose.{Huang1980Nest, Huang1980SimulAnneal, Huang1980HMC, Huang1980LM, Huang1980BFGS}.
     %  For performance considerations, see also https://blogs.mathworks.com/loren/2012/03/26/considering-performance-in-object-oriented-matlab-code/
@@ -185,25 +185,20 @@ classdef Huang1980 < handle & matlab.mixin.Copyable
     end
     
     methods (Access = protected)
-        function this = Huang1980(devkit, varargin)            
-            %  @param required devkit is mlpet.IDeviceKit.
+        function this = Huang1980(varargin)            
+            %  @param devkit is mlpet.IDeviceKit.
             %  @param Dt is numeric, s of time-shifting for AIF.
+            
+            this = this@mlpet.TracerKinetics(varargin{:});
             
             ip = inputParser;            
             ip.KeepUnmatched = true;
-            addRequired(ip, 'devkit', @(x) isa(x, 'mlpet.IDeviceKit'))
             addParameter(ip, 'Dt', 0, @isscalar)
             parse(ip, devkit, varargin{:})
             ipr = ip.Results;
             
-            this.devkit = ipr.devkit;
             this.Dt = ipr.Dt;
             this.regionTag = this.devkit.sessionData.regionTag;
-        end
-        function that = copyElement(this)
-            %%  See also web(fullfile(docroot, 'matlab/ref/matlab.mixin.copyable-class.html'))
-            
-            that = copyElement@matlab.mixin.Copyable(this);
         end
  	end 
 
