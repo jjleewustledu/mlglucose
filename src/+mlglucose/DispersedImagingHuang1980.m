@@ -182,6 +182,8 @@ classdef DispersedImagingHuang1980 < handle & matlab.mixin.Copyable
             fdgDCorr = sesd.fdgOnAtlas('typ', 'mlfourd.ImagingContext2');
             ic = this.prediction - fdgDCorr;
             ic.fileprefix = [fdgDCorr.fileprefix this.regionTag  '_residual'];
+            ic = ic.blurred(6); % inspired by BOLD spatial scales
+            ic = ic .* this.prediction.binarized();
             this.residual = ic;
         end
         function this = ensureModel(this)
@@ -197,68 +199,6 @@ classdef DispersedImagingHuang1980 < handle & matlab.mixin.Copyable
                     'hct', this.hct, ...
                     'LC', this.LC);
             end            
-        end
-        function this = solve(this)
-            fdg_img_2d = this.projectedFdgArray();
-            v1_img_1d = this.v1.fourdfp.img(this.roibin);
-            ks_img_2d = zeros(dipsum(this.roibin), this.LENK);
-            map = mlglucose.DispersedHuang1980Model.preferredMap();
-            
-            for vxl = 1:this.Nroi
-                try
-                    tic
-                    fprintf('mlglucose.DispersedImagingHuang1980.solve():  vxl->%i this.Nroi->%i\n', vxl, this.Nroi)
-                    this.measurement = fdg_img_2d(vxl, :);
-                    the_v1 = v1_img_1d(vxl);
-                    if this.sufficientData(the_v1, this.measurement)
-                        this.model = mlglucose.DispersedHuang1980Model( ...
-                            'map', map, ...
-                            'times_sampled', this.times_sampled, ...
-                            'v1', the_v1, ...
-                            'artery_interpolated', this.artery_plasma_interpolated, ...
-                            'glc', this.glc, ...
-                            'hct', this.hct, ...
-                            'LC', this.LC);
-                        strategy = mlglucose.Huang1980SimulAnneal('context', this);
-                        strategy = solve(strategy);
-                        
-                        % store latest solutions
-                        ks_img_2d(vxl, 1) = k1(strategy);
-                        ks_img_2d(vxl, 2) = k2(strategy);
-                        ks_img_2d(vxl, 3) = k3(strategy);
-                        ks_img_2d(vxl, 4) = k4(strategy);
-                        ks_img_2d(vxl, 5) = k5(strategy);
-                        
-                        % use latest solutions for initial conditions for solving neighboring voxels
-                        map_k1 = map('k1'); % cache mapped struct
-                        map_k2 = map('k2');
-                        map_k3 = map('k3');
-                        map_k4 = map('k4');  
-                        map_k5 = map('k5');
-                        map_k1.init = ks_img_2d(vxl, 1); % cached struct.init := latest solutions
-                        map_k2.init = ks_img_2d(vxl, 2);
-                        map_k3.init = ks_img_2d(vxl, 3);
-                        map_k4.init = ks_img_2d(vxl, 4);
-                        map_k5.init = ks_img_2d(vxl, 5);
-                        map('k1') = map_k1; % update mapped struct with adjusted cache
-                        map('k2') = map_k2;
-                        map('k3') = map_k3;
-                        map('k4') = map_k4; 
-                        map('k5') = map_k5; 
-                    
-                        % else ks_img_2d retains zeros                        
-                    end                    
-                    toc
-                catch ME
-                    %handexcept(ME)
-                    handwarning(ME)
-                end
-            end
-            
-            this.ks = this.invProjectedKsArray(ks_img_2d);
-        end
-        function tf = sufficientData(this, v1, measurement)
-            tf = v1 > this.MIN_V1 && mean(measurement) > this.MAX_NORMAL_BACKGROUND;
         end
     end
 
@@ -320,30 +260,12 @@ classdef DispersedImagingHuang1980 < handle & matlab.mixin.Copyable
             
             that = copyElement@matlab.mixin.Copyable(this);
         end
-        function ic = invProjectedKsArray(this, arr)
-            img = zeros([size(this.roibin) this.LENK]);
-            for ik = 1:this.LENK
-                cube = img(:,:,:,ik);
-                cube(this.roibin) = arr(:,ik); 
-                img(:,:,:,ik) = cube;
-            end
-            fp = strrep(this.fdg.fileprefix, 'fdg', 'ks'); % sprintf('ks_%s_', this.roi.fileprefix));
-            ic = mlfourd.ImagingContext2(img, 'filename', [fp '_' this.roi.fileprefix '.4dfp.hdr'], 'mmppix', [2 2 2]);
-        end
         function ic = masked(this, ic)
             %% retains original fileprefix.
             
             fp = ic.fileprefix;
             ic = ic.masked(this.roi);
             ic.fileprefix = fp;
-        end
-        function arr = projectedFdgArray(this)
-            Nt = size(this.fdg, 4);            
-            arr = zeros(dipsum(this.roibin), Nt);
-            for it = 1:Nt
-                cube = this.fdg.fourdfp.img(:,:,:,it);
-                arr(:,it) = cube(this.roibin);
-            end
         end
   	end 
 
