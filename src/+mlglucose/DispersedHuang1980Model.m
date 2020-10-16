@@ -130,12 +130,12 @@ classdef DispersedHuang1980Model
             ipr = ip.Results;            
             
             ks = ipr.ks(1:5);
-            if length(ks) > 5
-                ipr.Dt = ks(6);
+            if length(ipr.ks) > 5
+                ipr.Dt = ipr.ks(6);
             end
             if ipr.Dt ~= 0
                 times = 0:length(ipr.aif)-1;
-                aif = pchip(times+ipr.Dt, ipr.aif, times);
+                aif = pchip(times - ipr.Dt, ipr.aif, times); % remove the delay Dt found by model
             else
                 aif = ipr.aif;
             end
