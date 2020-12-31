@@ -11,7 +11,7 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
     end
     
     methods (Static)
-        function [this,fdg] = createFromDeviceKit(devkit, varargin)
+        function [this,fdg,aif] = createFromDeviceKit(devkit, varargin)
             %% adjusts AIF timings for coincidence of inflow with tissue activity from scanner
             %  @param required devkit is mlpet.IDeviceKit.
             %  @param fdg is numeric, default from devkit.
@@ -29,12 +29,13 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
             %  @param fileprefix, default from devkit.
             %  @return this.
             %  @return fdg, blurred by ipr.blurFdg.
+            %  @return aif.
             
             ip = inputParser;
             ip.KeepUnmatched = true;
             addRequired(ip, 'devkit', @(x) isa(x, 'mlpet.IDeviceKit'))
             addParameter(ip, 'fdg', [], @isnumeric)
-            addParameter(ip, 'roi', 'brain.4dfp.hdr', @(x) isa(x, 'mlfourd.ImagingContext2'))
+            addParameter(ip, 'roi', 'brain_222.4dfp.hdr')
             addParameter(ip, 'cbv', [])
             addParameter(ip, 'blurFdg', 4.3, @isnumeric)
             parse(ip, devkit, varargin{:})
@@ -84,6 +85,7 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
                 'glc', mlglucose.Huang1980.glcFromRadMeasurements(radm), ...
                 'hct', mlglucose.Huang1980.hctFromRadMeasurements(radm), ...
                 'fileprefix', fp, ...
+                'roi', roibin, ...
                 varargin{:});
         end
         function Dt = DTimeToShift(varargin)

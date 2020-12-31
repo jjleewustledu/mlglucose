@@ -1,4 +1,4 @@
-classdef Huang1980SimulAnneal < mlpet.TracerSimulatedAnnealing & mlglucose.Huang1980Strategy
+classdef Huang1980SimulAnneal < mlpet.TracerSimulAnneal & mlglucose.Huang1980Strategy
 	%% HUANG1980SIMULANNEAL operates on single voxels/regions.
 
 	%  $Revision$
@@ -28,7 +28,7 @@ classdef Huang1980SimulAnneal < mlpet.TracerSimulatedAnnealing & mlglucose.Huang
             %  @param sigma0.
             %  @param fileprefix.
             
-            this = this@mlpet.TracerSimulatedAnnealing(varargin{:});
+            this = this@mlpet.TracerSimulAnneal(varargin{:});
                       
             [this.ks_lower,this.ks_upper,this.ks0] = remapper(this);
             this.artery_interpolated = this.model.artery_interpolated;
@@ -79,6 +79,7 @@ classdef Huang1980SimulAnneal < mlpet.TracerSimulatedAnnealing & mlglucose.Huang
         end        
         function h = plot(this, varargin)
             ip = inputParser;
+            ip.KeepUnmatched = true;
             addParameter(ip, 'showAif', true, @islogical)
             addParameter(ip, 'xlim', [-20 1800], @isnumeric)            
             addParameter(ip, 'ylim', [], @isnumeric)
@@ -112,7 +113,6 @@ classdef Huang1980SimulAnneal < mlpet.TracerSimulatedAnnealing & mlglucose.Huang
             save(fn, this);
         end
         function this = solve(this, varargin)
-            import mlglucose.Huang1980SimulAnneal.loss_function   
             options_fmincon = optimoptions('fmincon', ...
                 'FunctionTolerance', 1e-9, ...
                 'OptimalityTolerance', 1e-9);
@@ -136,7 +136,7 @@ classdef Huang1980SimulAnneal < mlpet.TracerSimulatedAnnealing & mlglucose.Huang
                     'TemperatureFcn', 'temperatureexp');
             end
  			[ks_,sse,exitflag,output] = simulannealbnd( ...
-                @(ks__) loss_function( ...
+                @(ks__) mlglucose.Huang1980SimulAnneal.loss_function( ...
                        ks__, double(this.v1), this.artery_interpolated, this.times_sampled, double(this.Measurement), this.sigma0), ...
                 this.ks0, this.ks_lower, this.ks_upper, options); 
             

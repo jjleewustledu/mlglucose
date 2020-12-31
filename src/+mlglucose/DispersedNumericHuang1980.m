@@ -11,13 +11,11 @@ classdef DispersedNumericHuang1980 < handle & mlglucose.Huang1980
     end
     
     properties (Dependent)
-        artery_interpolated
-        times_sampled
         v1
     end
     
     methods (Static)
-        function [this,fdg] = createFromDeviceKit(devkit, varargin)
+        function [this,fdg,aif] = createFromDeviceKit(devkit, varargin)
             %% adjusts AIF timings for coincidence of inflow with tissue activity from scanner
             %  @param required devkit is mlpet.IDeviceKit.
             %  @param fdg is numeric, default from devkit.
@@ -35,12 +33,13 @@ classdef DispersedNumericHuang1980 < handle & mlglucose.Huang1980
             %  @param fileprefix, default from devkit.
             %  @return this.
             %  @return fdg, blurred by ipr.blurFdg.
+            %  @return aif.
             
             ip = inputParser;
             ip.KeepUnmatched = true;
             addRequired(ip, 'devkit', @(x) isa(x, 'mlpet.IDeviceKit'))
             addParameter(ip, 'fdg', [], @isnumeric)
-            addParameter(ip, 'roi', 'brain.4dfp.hdr', @(x) isa(x, 'mlfourd.ImagingContext2'))
+            addParameter(ip, 'roi', 'brain_222.4dfp.hdr')
             addParameter(ip, 'cbv', [])
             addParameter(ip, 'blurFdg', 4.3, @isnumeric)
             parse(ip, devkit, varargin{:})
@@ -90,6 +89,7 @@ classdef DispersedNumericHuang1980 < handle & mlglucose.Huang1980
                 'glc', mlglucose.Huang1980.glcFromRadMeasurements(radm), ...
                 'hct', mlglucose.Huang1980.hctFromRadMeasurements(radm), ...
                 'fileprefix', fp, ...
+                'roi', ipr.roi, ...
                 varargin{:});
         end
         function Dt = DTimeToShift(varargin)
@@ -126,12 +126,6 @@ classdef DispersedNumericHuang1980 < handle & mlglucose.Huang1980
         
         %% GET
         
-        function g = get.artery_interpolated(this)
-            g = this.strategy_.artery_interpolated;
-        end
-        function g = get.times_sampled(this)
-            g = this.strategy_.times_sampled;
-        end
         function g = get.v1(this)
             g = this.strategy_.v1;
         end

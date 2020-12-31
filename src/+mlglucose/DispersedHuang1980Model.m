@@ -1,4 +1,4 @@
-classdef DispersedHuang1980Model
+classdef DispersedHuang1980Model < mlglucose.Huang1980Model
 	%% DISPERSEDHUANG1980MODEL provides model data and methods to the strategy design pattern comprising
     %  mlglucose.{Huang1980, DispersedHuang1980SimulAnneal}.
     %  It operates on single voxels or regions.  It includes a dispersion parameter $\Delta$:
@@ -9,18 +9,30 @@ classdef DispersedHuang1980Model
  	%  last modified $LastChangedDate$ and placed into repository /Users/jjlee/MATLAB-Drive/mlglucose/src/+mlglucose.
  	%% It was developed on Matlab 9.7.0.1319299 (R2019b) Update 5 for MACI64.  Copyright 2020 John Joowon Lee.
  	
-	properties
-        artery_interpolated
-        glc
-        hct
-        LC
- 		map
-        times_sampled
-        v1
-    end
-    
     methods (Static)
-        function qs       = solution(ks, v1, artery_interpolated)
+        function m    = preferredMap()
+            %% init from Huang's table 1
+            m = containers.Map;
+            m('k1') = struct('min',  eps,  'max',  0.5,   'init', 0.048,   'sigma', 0.0048);
+            m('k2') = struct('min',  eps,  'max',  0.02,  'init', 0.0022,  'sigma', 0.0022);
+            m('k3') = struct('min',  eps,  'max',  0.01,  'init', 0.001,   'sigma', 0.0001);
+            m('k4') = struct('min',  eps,  'max',  0.001, 'init', 0.00011, 'sigma', 0.00011);
+            m('k5') = struct('min',  0.01, 'max',  2,     'init', 0.5,     'sigma', 0.05);
+        end
+        function qs   = sampled(ks, v1, artery_interpolated, times_sampled)
+            %  @param artery_interpolated is uniformly sampled at high sampling freq.
+            %  @param times_sampled are samples scheduled by the time-resolved PET reconstruction
+            
+            import mlglucose.DispersedHuang1980Model.solution  
+            qs = solution(ks, v1, artery_interpolated);
+            qs = qs(round(times_sampled + 1));
+        end
+        function loss = simulanneal_objective(ks, v1, artery_interpolated, times_sampled, qs0, sigma0)
+            import mlglucose.DispersedHuang1980Model.sampled          
+            qs = sampled(ks, v1, artery_interpolated, times_sampled);            
+            loss = 0.5 * sum((1 - qs ./ qs0).^2) / sigma0^2; % + sum(log(sigma0*qs0)); % sigma ~ sigma0 * qs0
+        end 
+        function qs   = solution(ks, v1, artery_interpolated)
             %  @param artery_interpolated is uniformly sampled at high sampling freq. starting at time = 0.
             
             k1 = ks(1);
@@ -53,65 +65,11 @@ classdef DispersedHuang1980Model
             q3 = (k3 * k1 / bminusa) * conv3;
             qs = v1 * (artery_interpolated1 + scale * (q2 + q3));            
         end 
-        function qs       = sampled(ks, v1, artery_interpolated, times_sampled)
-            %  @param artery_interpolated is uniformly sampled at high sampling freq.
-            %  @param times_sampled are samples scheduled by the time-resolved PET reconstruction
-            
-            import mlglucose.DispersedHuang1980Model.solution  
-            qs = solution(ks, v1, artery_interpolated);
-            qs = qs(round(times_sampled + 1));
-        end
-        function logp = log_likelihood(Z, Sigma)
-            %% for Huang1980HMC
-            
-            logp = sum(-log(Sigma) - 0.5*log(2*pi) - 0.5*Z.^2); % scalar
-        end
-        function loss = simulanneal_objective(ks, v1, artery_interpolated, times_sampled, qs0, sigma0)
-            import mlglucose.DispersedHuang1980Model.sampled          
-            qs = sampled(ks, v1, artery_interpolated, times_sampled);            
-            loss = 0.5 * sum((1 - qs ./ qs0).^2) / sigma0^2; % + sum(log(sigma0*qs0)); % sigma ~ sigma0 * qs0
-        end 
-        function m = preferredMap()
-            %% init from Huang's table 1
-            m = containers.Map;
-            m('k1') = struct('min',  eps,  'max',  0.5,   'init', 0.048,   'sigma', 0.0048);
-            m('k2') = struct('min',  eps,  'max',  0.02,  'init', 0.0022,  'sigma', 0.0022);
-            m('k3') = struct('min',  eps,  'max',  0.01,  'init', 0.001,   'sigma', 0.0001);
-            m('k4') = struct('min',  eps,  'max',  0.001, 'init', 0.00011, 'sigma', 0.00011);
-            m('k5') = struct('min',  0.01, 'max',  2,     'init', 0.5,     'sigma', 0.05);
-        end
     end
 
 	methods		  
  		function this = DispersedHuang1980Model(varargin)
-                
-            ip = inputParser;
-            ip.KeepUnmatched = true;
-            addParameter(ip, 'map', this.preferredMap(), @(x) isa(x, 'containers.Map'))
-            addParameter(ip, 'v1', 0.038, @isnumeric)
-            addParameter(ip, 'times_sampled', [], @isnumeric)
-            addParameter(ip, 'artery_interpolated', [], @isnumeric)
-            addParameter(ip, 'glc', 100, @isnumeric)
-            addParameter(ip, 'hct', 0.4, @isnumeric)
-            addParameter(ip, 'LC', 0.81, @isnumeric)
-            parse(ip, varargin{:})
-            ipr = ip.Results;
-            
-            this.map = ipr.map;
-            this.v1 = ipr.v1;
-            this.times_sampled = ipr.times_sampled;
-            if this.times_sampled(end)+1 ~= length(ipr.artery_interpolated)
-                this.artery_interpolated = ...
-                    pchip(0:length(ipr.artery_interpolated)-1, ipr.artery_interpolated, 0:this.times_sampled(end));
-            else
-                this.artery_interpolated = ipr.artery_interpolated;
-            end
-            this.glc = ipr.glc;
-            this.hct = ipr.hct;            
-            if (this.hct > 1)
-                this.hct = this.hct/100;
-            end
-            this.LC = ipr.LC;            
+            this = this@mlglucose.Huang1980Model(varargin{:});           
         end
         
         function fdg  = simulated(this, varargin)

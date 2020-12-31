@@ -1,5 +1,5 @@
-classdef Huang1980 < handle & mlpet.TracerKinetics
-	%% HUANG1980 is the context to a strategy design patterns which implements:
+classdef Huang1980 < handle & mlpet.TracerKineticsStrategy
+	%% HUANG1980 is the context to a strategy design pattern which implements:
     %  mlglucose.{Huang1980Nest, Huang1980SimulAnneal, Huang1980HMC, Huang1980LM, Huang1980BFGS}.
     %  For performance considerations, see also https://blogs.mathworks.com/loren/2012/03/26/considering-performance-in-object-oriented-matlab-code/
 
@@ -7,14 +7,6 @@ classdef Huang1980 < handle & mlpet.TracerKinetics
  	%  was created 10-Apr-2020 15:14:24 by jjlee,
  	%  last modified $LastChangedDate$ and placed into repository /Users/jjlee/MATLAB-Drive/mlglucose/src/+mlglucose.
  	%% It was developed on Matlab 9.7.0.1319299 (R2019b) Update 5 for MACI64.  Copyright 2020 John Joowon Lee.
- 	   
-    properties        
-        devkit
-        Dt          % time-shift for AIF; Dt < 0 shifts backwards in time.
-        measurement % expose for performance when used by mlglucose.Huang1980Strategy
-        model       %
-        regionTag
-    end
     
     methods (Static)
         function this = createFromDeviceKit(devkit, varargin)
@@ -55,8 +47,8 @@ classdef Huang1980 < handle & mlpet.TracerKinetics
             tbl = radm.fromPamStone;
             rows = tbl.Properties.RowNames;
             select = strncmp(rows, 'glc FDG', 7);
-            g = cellfun(@str2double, tbl.Var1(select));
-            g = mean(g(~isempty(g)), 'omitnan');
+            g = tbl.measurement(select);
+            g = mean(g(find(g)), 'omitnan'); %#ok<FNDSB>
         end
         function g = glcConversion(g, unitsIn, unitsOut)
             %  @param required g is numeric
@@ -92,8 +84,7 @@ classdef Huang1980 < handle & mlpet.TracerKinetics
             end
         end
         function h = hctFromRadMeasurements(radm)
-            h = radm.fromPamStone{'Hct', 'Var1'};
-            h = str2double(h{1});
+            h = radm.fromPamStone{'Hct', 'measurement'};
             if h > 1
                 h = h/100;
             end
@@ -166,39 +157,16 @@ classdef Huang1980 < handle & mlpet.TracerKinetics
             [k(3),sk(3)] = k3(this.strategy_, varargin{:});
             [k(4),sk(4)] = k4(this.strategy_, varargin{:});
         end
-        function h = plot(this, varargin)
-            h = this.strategy_.plot(varargin{:});
-        end
-        function this = simulated(this, varargin)
-            this.measurement = this.model.simulated(varargin{:});
-            this.strategy_.Measurement = this.measurement; % strategy_ needs value copies for performance
-        end
-        function this = solve(this, varargin)
-            this.strategy_ = solve(this.strategy_, varargin{:});
-        end
     end
     
     %% PROTECTED
     
     properties (Access = protected)
-        strategy_
     end
     
     methods (Access = protected)
-        function this = Huang1980(varargin)            
-            %  @param devkit is mlpet.IDeviceKit.
-            %  @param Dt is numeric, s of time-shifting for AIF.
-            
-            this = this@mlpet.TracerKinetics(varargin{:});
-            
-            ip = inputParser;            
-            ip.KeepUnmatched = true;
-            addParameter(ip, 'Dt', 0, @isscalar)
-            parse(ip, devkit, varargin{:})
-            ipr = ip.Results;
-            
-            this.Dt = ipr.Dt;
-            this.regionTag = this.devkit.sessionData.regionTag;
+        function this = Huang1980(varargin)  
+            this = this@mlpet.TracerKineticsStrategy(varargin{:});
         end
  	end 
 
