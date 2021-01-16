@@ -10,10 +10,6 @@ classdef DispersedNumericHuang1980 < handle & mlglucose.Huang1980
         LENK = 5
     end
     
-    properties (Dependent)
-        v1
-    end
-    
     methods (Static)
         function [this,fdg,aif] = createFromDeviceKit(devkit, varargin)
             %% adjusts AIF timings for coincidence of inflow with tissue activity from scanner
@@ -123,15 +119,6 @@ classdef DispersedNumericHuang1980 < handle & mlglucose.Huang1980
     end
 
 	methods 
-        
-        %% GET
-        
-        function g = get.v1(this)
-            g = this.strategy_.v1;
-        end
-        
-        %%
-        
         function ks = buildKs(this, varargin)
             this = solve(this, varargin{:});
             ks = [k1(this) k2(this) k3(this) k4(this) k5(this)];
@@ -175,20 +162,31 @@ classdef DispersedNumericHuang1980 < handle & mlglucose.Huang1980
         end
         
  		function this = DispersedNumericHuang1980(varargin)
- 			%% DISPERSEDNUMERICHUANG1980
-            %  @param devkit is mlpet.IDeviceKit.
+ 			%% DISPERSEDNUMERICHUANG1980   
             %  @param fdg is numeric.
-            %  @param solver is in {'nest' 'simulanneal' 'hmc' 'lm' 'bfgs'}.            
-            %  @param map, default := mlglucose.Huang1980Model.preferredMap().
-            %  @param times_sampled non-uniformly scheduled by the time-resolved PET reconstruction.
-            %  @param artery_interpolated, default from devkit.
-            %  @param glc is numeric, default from devkit.
-            %  @param hct is numeric, default from devkit.
-            %  @param LC is numeric, default from mloxygen.Raichle1983Model
-            %  @param sigma0, default from mloptimization.SimulatedAnnealing.
-            %  @param fileprefix, default from devkit.
+            %  @param solver is in {'nest' 'simulanneal' 'hmc' 'lm' 'bfgs'}. 
+            %  @param devkit is mlpet.IDeviceKit.          
+            %  @param Dt is numeric, s of time-shifting for AIF.
+            %  @param times_sampled is numeric.
+            %  @param artery_interpolated is numeric.  
+            %  
+            %  for mlglucose.DispersedHuang1980Model: 
+            %  @param v1
+            %  @param glc
+            %  @param hct
+            %  @param LC
+            %  @param map is a containers.Map.  Default := this.preferredMap.
+            %  @param times_sampled for scanner is typically not uniform.
+            %  @param artery_interpolated must be uniformly interpolated.
+            %
+            %  for mlglucose.DispersedHuang1980SimulAnneal:
+            %  @param context is mlglucose.Huang1980.
+            %  @param sigma0.
+            %  @param fileprefix.
 
- 			this = this@mlglucose.Huang1980(varargin{:});	
+ 			this = this@mlglucose.Huang1980( ...
+                'model', mlglucose.DispersedHuang1980Model(varargin{:}), ...
+                varargin{:});	
             
             ip = inputParser;
             ip.KeepUnmatched = true;
@@ -198,7 +196,6 @@ classdef DispersedNumericHuang1980 < handle & mlglucose.Huang1980
             ipr = ip.Results;
                         
             this.measurement = ipr.fdg;
-            this.model = mlglucose.DispersedHuang1980Model(varargin{:});
             switch lower(ipr.solver)
                 case 'simulanneal'
                     this.strategy_ = mlglucose.DispersedHuang1980SimulAnneal( ...

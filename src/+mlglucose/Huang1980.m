@@ -8,6 +8,10 @@ classdef Huang1980 < handle & mlpet.TracerKineticsStrategy
  	%  last modified $LastChangedDate$ and placed into repository /Users/jjlee/MATLAB-Drive/mlglucose/src/+mlglucose.
  	%% It was developed on Matlab 9.7.0.1319299 (R2019b) Update 5 for MACI64.  Copyright 2020 John Joowon Lee.
     
+    properties (Dependent)
+        v1
+    end
+    
     methods (Static)
         function this = createFromDeviceKit(devkit, varargin)
             %% 
@@ -92,19 +96,21 @@ classdef Huang1980 < handle & mlpet.TracerKineticsStrategy
     end
     
 	methods  
-        function cmr = buildCmrglc(this, varargin)
+        
+        %% GET
+        
+        function g = get.v1(this)
+            g = this.strategy_.v1;
         end
+        
+        %%
+        
         function ks = buildKs(this, varargin)
             this = solve(this, varargin{:});
             ks = [k1(this) k2(this) k3(this) k4(this)];
         end
-        function buildQC(this, varargin)
+        function buildQC(~, varargin)
             return
-        end
-        function ic = buildCbv(this, varargin)
-            img = 100*this.model.v1;
-            fp = sprintf('mlglucose_Huang1980_buildCbv_dt%s', datestr(now, 'yyyymmddHHMMSS'));
-            ic = mlfourd.ImagingContext2(img, 'fileprefix', fp, varargin{:});
         end
         
         function c = chi(this, varargin)
@@ -120,10 +126,10 @@ classdef Huang1980 < handle & mlpet.TracerKineticsStrategy
             glc_ = this.glcConvertsion(this.model.glc, 'mg/dL', 'umol/hg'); 
             r = 60*this.chi(varargin{:})*glc_/this.model.LC;
         end
-        function t = ctxglc(this, varargin)
+        function t = ctxglc(~, varargin)
             t = nan;
         end
-        function f = freeglc(this, varargin)
+        function f = freeglc(~, varargin)
             f = nan;
         end
         function [K,sK] = K1(this, varargin)
@@ -160,9 +166,6 @@ classdef Huang1980 < handle & mlpet.TracerKineticsStrategy
     end
     
     %% PROTECTED
-    
-    properties (Access = protected)
-    end
     
     methods (Access = protected)
         function this = Huang1980(varargin)  

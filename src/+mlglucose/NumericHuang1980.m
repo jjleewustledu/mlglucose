@@ -133,7 +133,9 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
             %  @param sigma0, default from mloptimization.SimulatedAnnealing.
             %  @param fileprefix, default from devkit.
 
- 			this = this@mlglucose.Huang1980(varargin{:});	
+ 			this = this@mlglucose.Huang1980( ...
+                'model', mlglucose.Huang1980Model(varargin{:}), ...
+                varargin{:});	
             
             ip = inputParser;
             ip.KeepUnmatched = true;
@@ -143,7 +145,6 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
             ipr = ip.Results;
                         
             this.measurement = ipr.fdg;
-            this.model = mlglucose.Huang1980Model(varargin{:});
             switch lower(ipr.solver)
                 case 'nest'
                     this.strategy_ = mlglucose.Huang1980Nest( ...

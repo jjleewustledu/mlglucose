@@ -13,19 +13,20 @@ classdef DispersedHuang1980Model < mlglucose.Huang1980Model
         function m    = preferredMap()
             %% init from Huang's table 1
             m = containers.Map;
-            m('k1') = struct('min',  eps,  'max',  0.5,   'init', 0.048,   'sigma', 0.0048);
-            m('k2') = struct('min',  eps,  'max',  0.02,  'init', 0.0022,  'sigma', 0.0022);
-            m('k3') = struct('min',  eps,  'max',  0.01,  'init', 0.001,   'sigma', 0.0001);
-            m('k4') = struct('min',  eps,  'max',  0.001, 'init', 0.00011, 'sigma', 0.00011);
-            m('k5') = struct('min',  0.01, 'max',  2,     'init', 0.5,     'sigma', 0.05);
+            m('k1') = struct('min',  eps, 'max',  0.5,   'init', 0.048,   'sigma', 0.0048);
+            m('k2') = struct('min',  eps, 'max',  0.02,  'init', 0.0022,  'sigma', 0.0022);
+            m('k3') = struct('min',  eps, 'max',  0.01,  'init', 0.001,   'sigma', 0.0001);
+            m('k4') = struct('min',  eps, 'max',  0.001, 'init', 0.00011, 'sigma', 0.00011);
+            m('k5') = struct('min',  0.2, 'max', 10,     'init', 1,       'sigma', 0.05);
         end
         function qs   = sampled(ks, v1, artery_interpolated, times_sampled)
             %  @param artery_interpolated is uniformly sampled at high sampling freq.
             %  @param times_sampled are samples scheduled by the time-resolved PET reconstruction
             
-            import mlglucose.DispersedHuang1980Model.solution  
+            import mlglucose.DispersedHuang1980Model.solution 
+            import mlglucose.DispersedHuang1980Model.sampleOnScannerFrames  
             qs = solution(ks, v1, artery_interpolated);
-            qs = qs(round(times_sampled + 1));
+            qs = sampleOnScannerFrames(qs, times_sampled);
         end
         function loss = simulanneal_objective(ks, v1, artery_interpolated, times_sampled, qs0, sigma0)
             import mlglucose.DispersedHuang1980Model.sampled          
