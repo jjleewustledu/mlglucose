@@ -71,7 +71,7 @@ classdef DispersedNumericHuang1980 < handle & mlglucose.Huang1980
             
             counting = ipr.devkit.buildCountingDevice();
             Dt = mlglucose.DispersedNumericHuang1980.DTimeToShift(counting, scanner);
-            aif = pchip(counting.times + Dt, counting.activityDensity(), 0:scanner.times(end));
+            aif = makima(counting.times + Dt, counting.activityDensity(), 0:scanner.times(end));
             radm = counting.radMeasurements;
             
             this = mlglucose.DispersedNumericHuang1980( ...
@@ -89,6 +89,9 @@ classdef DispersedNumericHuang1980 < handle & mlglucose.Huang1980
                 varargin{:});
         end
         function Dt = DTimeToShift(varargin)
+            %% Dt by which to shift arterial to match diff(scanner):  Dt < 0 will shift left; Dt > 0 will shift right.
+            %  Adjusts for ipr.counter.datetime0 ~= ipr.scanner.datetime0.
+            
             ip = inputParser;
             addRequired(ip, 'counter')
             addRequired(ip, 'scanner')
@@ -101,7 +104,7 @@ classdef DispersedNumericHuang1980 < handle & mlglucose.Huang1980
             activity_s = asrow(ipr.scanner.imagingContext.fourdfp.img);
             
             unif_t = 0:max([t_c t_s]);
-            unif_activity_s = pchip(t_s, activity_s, unif_t);
+            unif_activity_s = makima(t_s, activity_s, unif_t);
             d_activity_s = diff(unif_activity_s); % uniformly sampled time-derivative
             
             % shift dcv in time to match inflow with dtac    
@@ -109,11 +112,17 @@ classdef DispersedNumericHuang1980 < handle & mlglucose.Huang1980
             [~,idx_c] = max(activity_c > 0.1*max(activity_c));
             idx_c = idx_c - 1;
             [~,idx_s] = max(d_activity_s > 0.1*max(d_activity_s));
+            
             Dt = unif_t(idx_s) - t_c(idx_c); % Dt ~ -20
-            if Dt < -t_c(idx_c) || Dt > 0
+            if Dt < -t_c(idx_c) 
                 warning('mlglucose:ValueError', ...
                     'DispersedNumericHuang1980.DTimeToShift.Dt -> %g; forcing -> %g', Dt, -t_c(idx_c))
                 Dt = -t_c(idx_c);
+            end
+            if Dt > 0
+                warning('mlglucose:ValueError', ...
+                    'DispersedNumericHuang1980.DTimeToShift.Dt -> %g; forcing -> %g', Dt, -t_c(idx_c))
+                Dt = 0;
             end
         end
     end

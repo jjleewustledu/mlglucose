@@ -1,4 +1,4 @@
-classdef AugmentedNumericHuang1980 < handle & mlglucose.Huang1980
+classdef AugmentedNumericHuang1980 < handle & mlpet.AugmentedData & mlglucose.Huang1980
 	%% AUGMENTEDNUMERICHUANG1980  
 
 	%  $Revision$
@@ -10,11 +10,7 @@ classdef AugmentedNumericHuang1980 < handle & mlglucose.Huang1980
         LENK = 5
     end
     
-    properties
-        Dt_aif
-    end
-    
-    properties (Dependent)        
+    properties (Dependent)
         artery_sampled
     end
     
@@ -31,14 +27,9 @@ classdef AugmentedNumericHuang1980 < handle & mlglucose.Huang1980
             %  @param roi is mlfourd.ImagingContext2.
             %  @param roi2 is mlfourd.ImagingContext2.
             %  @param cbv is mlfourd.ImagingContext2.
-            %  @param cbv2 is mlfourd.ImagingContext2.
-            %  @param blurFdg := {[], 0, 4.3, ...}   
+            %  @param cbv2 is mlfourd.ImagingContext2. 
             %  @param Dt_aif isscalar.
-            %  @param times_sampled non-uniformly scheduled by the time-resolved PET reconstruction.
-            %  @param artery_interpolated, default from devkit.
-            %  @param glc is numeric, default from devkit.
-            %  @param hct is numeric, default from devkit.
-            %  @param LC is numeric, default from mloxygen.Raichle1983Model
+            %  @param LC is numeric, default from mlglucose.DispersedHuang1980Model.
             %  @param sigma0, default from mloptimization.SimulatedAnnealing.
             %  @param fileprefix, default from devkit.
             %  @param fracMixing in [0 1] for mixing tacs and aifs.
@@ -47,6 +38,7 @@ classdef AugmentedNumericHuang1980 < handle & mlglucose.Huang1980
             %  @return aif_.
             
             import mlglucose.AugmentedNumericHuang1980
+            import mlglucose.AugmentedNumericHuang1980.mixTacsAifs
             import mlglucose.AugmentedNumericHuang1980.mix
             import mlglucose.Huang1980
             
@@ -62,49 +54,13 @@ classdef AugmentedNumericHuang1980 < handle & mlglucose.Huang1980
             addParameter(ip, 'roi2', [], @(x) isa(x, 'mlfourd.ImagingContext2'))
             addParameter(ip, 'cbv', [], @(x) isa(x, 'mlfourd.ImagingContext2'))
             addParameter(ip, 'cbv2', [], @(x) isa(x, 'mlfourd.ImagingContext2'))
-            addParameter(ip, 'blurFdg', 4.3, @isnumeric)
             addParameter(ip, 'Dt_aif', 0, @isscalar)
             addParameter(ip, 'fracMixing', 0.5, @isscalar)
             parse(ip, devkit, devkit2, varargin{:})
             ipr = ip.Results;
-            this.Dt_aif = ipr.Dt_aif;
             
-            % scanners provide calibrations, ancillary data            
-            
-            scanner = ipr.scanner.volumeAveraged(ipr.roi);
-            tac = scanner.activityDensity();
-            scanner2 = ipr.scanner2.volumeAveraged(ipr.roi2);            
-            tac2 = scanner2.activityDensity();
-            
-            % counters also have calibrations
-            
-            aif = ipr.counter.activityDensity();         
-            aif2 = ipr.counter2.activityDensity();
-            
-            % reconcile timings             
-              
-            if this.Dt_aif > 0 % counting2 is behind counting               
-                Dt = AugmentedNumericHuang1980.DTimeToShift(ipr.counter, scanner);
-                aif = makima(ipr.counter.times + Dt, aif, 0:scanner.times(end));
-                tac = makima(scanner.times, tac, scanner.times); 
-                aif2 = makima(ipr.counter2.times + Dt - this.Dt_aif, aif2, 0:scanner.times(end));
-                tac2 = makima(scanner2.times - this.Dt_aif, tac2, scanner.times); 
-                timesMid_ = scanner.timesMid;
-            else              
-                Dt = AugmentedNumericHuang1980.DTimeToShift(ipr.counter2, scanner2);
-                aif2 = makima(ipr.counter2.times + Dt, aif2, 0:scanner2.times(end));
-                tac2 = makima(scanner2.times, tac2, scanner2.times); 
-                aif = makima(ipr.counter.times + Dt + this.Dt_aif, aif, 0:scanner2.times(end));
-                tac = makima(scanner.times + this.Dt_aif, tac, scanner2.times);  
-                timesMid_ = scanner2.timesMid;
-            end 
-            aif(aif < 0) = 0;
-            tac(tac < 0) = 0;
-            aif2(aif2 < 0) = 0;
-            tac2(tac2 < 0) = 0;
-            
-            tac_ = mix(tac, tac2, ipr.fracMixing); % calibrated, decaying
-            aif_ = mix(aif, aif2, ipr.fracMixing);
+            % mix components for augmentation
+            [tac_,timesMid_,aif_] = mixTacsAifs(varargin{:});
             
             % v1              
 
@@ -137,74 +93,8 @@ classdef AugmentedNumericHuang1980 < handle & mlglucose.Huang1980
                 'glc', glc_, ...
                 'hct', hct_, ...
                 'fileprefix', fp, ...
-                varargin{:});
-        end
-        function Dt = DTimeToShift(varargin)
-            %% @return Dt is the delay of the tac behind the aif, but typically Dt ~ -20.
-            
-            ip = inputParser;
-            addRequired(ip, 'counter')
-            addRequired(ip, 'scanner')
-            parse(ip, varargin{:})
-            ipr = ip.Results;
-            
-            t_c        = asrow(ipr.counter.times);
-            activity_c = asrow(ipr.counter.activityDensity());
-            t_s        = asrow(ipr.scanner.timesMid);
-            activity_s = asrow(ipr.scanner.imagingContext.fourdfp.img);            
-            
-            unif_t = 0:max([t_c t_s]);
-            unif_activity_c = makima(t_c, activity_c, unif_t);
-            unif_activity_c(unif_activity_c < 0) = 0;
-            unif_activity_s = makima(t_s, activity_s, unif_t);
-            unif_activity_s(unif_activity_s < 0) = 0;
-            d_activity_s = diff(unif_activity_s); % uniformly sampled time-derivative
-            
-            % shift dcv in time to match inflow with dtac    
-            % use 0.1 of max since counting SNR >> 10 and idx_scanner ~ 1
-            [~,idx_c] = max(unif_activity_c > 0.1*max(unif_activity_c));
-            [~,idx_s] = max(d_activity_s > 0.1*max(d_activity_s));
-            Dt = unif_t(idx_s) - unif_t(idx_c); % Dt ~ -20
-            if Dt < -unif_t(idx_c) || Dt > 0
-                warning('mlglucose:ValueError', ...
-                    'AugmentedNumericHuang1980.DTimeToShift.Dt -> %g; forcing -> %g', Dt, -t_c(idx_c))
-                Dt = -unif_t(idx_c);
-            end
-        end
-        function Dt = DTimeToShiftAifs(varargin)
-            %% @return Dt is the delay of counting2 behind counting.
-            
-            ip = inputParser;
-            addRequired(ip, 'counting')
-            addRequired(ip, 'counting2')
-            parse(ip, varargin{:})
-            ipr = ip.Results;
-            
-            t         = asrow(ipr.counting.times);
-            activity  = asrow(ipr.counting.activityDensity());
-            t2        = asrow(ipr.counting2.times);
-            activity2 = asrow(ipr.counting2.activityDensity());
-            
-            unif_t = 0:max([t t2]);
-            unif_activity = makima(t, activity, unif_t);
-            unif_activity2 = makima(t2, activity2, unif_t);
-              
-            % shift activity in time to match inflow with activity2
-            % use 0.1 of max since counting SNR >> 10 
-            [~,idx] = max(unif_activity > 0.1*max(unif_activity));
-            [~,idx2] = max(unif_activity2 > 0.1*max(unif_activity2));
-            Dt = unif_t(idx2) - unif_t(idx);
-        end
-        function mixed = mix(obj, obj2, f)
-            assert(f > 0)
-            assert(f < 1)
-            if isnumeric(obj) && isnumeric(obj2)
-                mixed = f*obj + (1 - f)*obj2;
-                return
-            end
-            obj = mlfourd.ImagingContext2(obj);
-            obj2 = mlfourd.ImagingContext2(obj2);
-            mixed = obj * f + obj2 * (1 - f);
+                varargin{:});            
+            this.Dt_aif = ipr.Dt_aif;
         end
     end
     
@@ -218,6 +108,18 @@ classdef AugmentedNumericHuang1980 < handle & mlglucose.Huang1980
         
         %%
         
+        function a = artery_local(this, Delta)
+            %% Dt is included in this.artery_interpolated by createFromDeviceKit.
+            %  See also mlgluose.DispersedHuang1980Model.
+            
+            n = length(this.artery_interpolated);
+            times = 0:1:n-1;            
+            auc0 = trapz(this.artery_interpolated);
+            artery_interpolated1 = conv(this.artery_interpolated, exp(-Delta*times));
+            artery_interpolated1 = artery_interpolated1(1:n);
+            artery_interpolated1 = artery_interpolated1*auc0/trapz(artery_interpolated1);
+            a = this.model.sampleOnScannerFrames(artery_interpolated1, this.times_sampled);
+        end
         function ks = buildKs(this, varargin)
             this = solve(this, varargin{:});
             ks = [k1(this) k2(this) k3(this) k4(this) k5(this)];
