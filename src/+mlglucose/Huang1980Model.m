@@ -201,14 +201,6 @@ classdef Huang1980Model < mlpet.TracerKineticsModel
             end
             this.LC = ipr.LC;
         end
-        
-        function this = set_artery_interpolated(this, s)
-            if this.times_sampled(end)+1 ~= length(s)
-                this.artery_interpolated = pchip(0:length(s)-1, s, 0:this.times_sampled(end));
-            else
-                this.artery_interpolated = s;
-            end
-        end
         function fdg  = simulated(this, varargin)
             %% SIMULATED simulates tissue activity with passed and internal parameters.
             %  @param required ks is [k1 k2 k3 k4 Dt].
@@ -232,6 +224,9 @@ classdef Huang1980Model < mlpet.TracerKineticsModel
             end
             fdg = mlglucose.Huang1980Model.sampled(ks, ipr.v1, aif, this.times_sampled);
         end
+    end
+    
+    methods %% DEPRECATED
         function fdg  = solution_simulated(this, varargin)
             warning('mlglucose:Deprecated', 'Huang1980Model.solution_simulated() is DEPRECATED; prefer simulated()');
             fdg = this.simulated(varargin{:});

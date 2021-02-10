@@ -7,7 +7,8 @@ classdef AugmentedNumericHuang1980 < handle & mlpet.AugmentedData & mlglucose.Hu
  	%% It was developed on Matlab 9.9.0.1538559 (R2020b) Update 3 for MACI64.  Copyright 2021 John Joowon Lee.
  	 	
     properties (Constant)
-        LENK = 5
+        LENK = 5        
+        T = mlglucose.DispersedHuang1980Model.T
     end
     
     properties (Dependent)
@@ -21,8 +22,8 @@ classdef AugmentedNumericHuang1980 < handle & mlpet.AugmentedData & mlglucose.Hu
             %  @param required devkit2 is mlpet.IDeviceKit.
             %  @param required scanner is an mlpet.AbstractDevice.
             %  @param required scanner2 is an mlpet.AbstractDevice.
-            %  @param required counter is an mlpet.AbstractDevice.
-            %  @param required counter2 is an mlpet.AbstractDevice.
+            %  @param required arterial is an mlpet.AbstractDevice.
+            %  @param required arterial2 is an mlpet.AbstractDevice.
             %  @param solver is in {'nest' 'simulanneal' 'hmc' 'lm' 'bfgs'}, default := 'simulanneal'.
             %  @param roi is mlfourd.ImagingContext2.
             %  @param roi2 is mlfourd.ImagingContext2.
@@ -38,8 +39,8 @@ classdef AugmentedNumericHuang1980 < handle & mlpet.AugmentedData & mlglucose.Hu
             %  @return aif_.
             
             import mlglucose.AugmentedNumericHuang1980
-            import mlglucose.AugmentedNumericHuang1980.mixTacsAifs
-            import mlglucose.AugmentedNumericHuang1980.mix
+            import mlpet.AugmentedData.mixTacsAifs
+            import mlpet.AugmentedData.mix
             import mlglucose.Huang1980
             
             ip = inputParser;
@@ -48,8 +49,8 @@ classdef AugmentedNumericHuang1980 < handle & mlpet.AugmentedData & mlglucose.Hu
             addRequired(ip, 'devkit2', @(x) isa(x, 'mlpet.IDeviceKit'))
             addParameter(ip, 'scanner', [], @(x) isa(x, 'mlpet.AbstractDevice'))
             addParameter(ip, 'scanner2', [], @(x) isa(x, 'mlpet.AbstractDevice'))
-            addParameter(ip, 'counter', [], @(x) isa(x, 'mlpet.AbstractDevice'))
-            addParameter(ip, 'counter2', [], @(x) isa(x, 'mlpet.AbstractDevice'))            
+            addParameter(ip, 'arterial', [], @(x) isa(x, 'mlpet.AbstractDevice'))
+            addParameter(ip, 'arterial2', [], @(x) isa(x, 'mlpet.AbstractDevice'))            
             addParameter(ip, 'roi', [], @(x) isa(x, 'mlfourd.ImagingContext2'))
             addParameter(ip, 'roi2', [], @(x) isa(x, 'mlfourd.ImagingContext2'))
             addParameter(ip, 'cbv', [], @(x) isa(x, 'mlfourd.ImagingContext2'))
@@ -60,7 +61,7 @@ classdef AugmentedNumericHuang1980 < handle & mlpet.AugmentedData & mlglucose.Hu
             ipr = ip.Results;
             
             % mix components for augmentation
-            [tac_,timesMid_,aif_] = mixTacsAifs(varargin{:});
+            [tac_,timesMid_,aif_,Dt] = mixTacsAifs(devkit, devkit2, varargin{:});
             
             % v1              
 
@@ -74,11 +75,11 @@ classdef AugmentedNumericHuang1980 < handle & mlpet.AugmentedData & mlglucose.Hu
             
             %
             
-            glc = Huang1980.glcFromRadMeasurements(ipr.counter.radMeasurements);
-            glc2 = Huang1980.glcFromRadMeasurements(ipr.counter2.radMeasurements);
+            glc = Huang1980.glcFromRadMeasurements(ipr.arterial.radMeasurements);
+            glc2 = Huang1980.glcFromRadMeasurements(ipr.arterial2.radMeasurements);
             glc_ = mix(glc, glc2, ipr.fracMixing);
-            hct = Huang1980.hctFromRadMeasurements(ipr.counter.radMeasurements);
-            hct2 = Huang1980.hctFromRadMeasurements(ipr.counter2.radMeasurements);
+            hct = Huang1980.hctFromRadMeasurements(ipr.arterial.radMeasurements);
+            hct2 = Huang1980.hctFromRadMeasurements(ipr.arterial2.radMeasurements);
             hct_ = mix(hct, hct2, ipr.fracMixing);
             fp = sprintf('mlglucose_AugmentedNumericHuang1980_createFromDeviceKit_dt%s', datestr(now, 'yyyymmddHHMMSS'));    
             
@@ -103,47 +104,55 @@ classdef AugmentedNumericHuang1980 < handle & mlpet.AugmentedData & mlglucose.Hu
         %% GET
         
         function g = get.artery_sampled(this)
-            g = this.model.sampleOnScannerFrames(this.artery_interpolated, this.times_sampled);
+            g = this.model.solutionOnScannerFrames( ...
+                this.artery_interpolated(this.T+1:end), this.times_sampled);
         end
         
         %%
         
-        function a = artery_local(this, Delta)
-            %% Dt is included in this.artery_interpolated by createFromDeviceKit.
-            %  See also mlgluose.DispersedHuang1980Model.
+        function a = artery_local(this, varargin)
+            %% ARTERY_LOCAL
+            %  @param typ is understood by imagingType.
+            %  @return a is an imagingType.
+            %  See also mloxygen.DispersedHuang1980Model.
+            
+            ip = inputParser;
+            ip.KeepUnmatched = true;
+            addParameter(ip, 'typ', 'mlfourd.ImagingContext2', @ischar)
+            parse(ip, varargin{:})
+            ipr = ip.Results;
             
             n = length(this.artery_interpolated);
             times = 0:1:n-1;            
             auc0 = trapz(this.artery_interpolated);
-            artery_interpolated1 = conv(this.artery_interpolated, exp(-Delta*times));
-            artery_interpolated1 = artery_interpolated1(1:n);
+            artery_interpolated_ = conv(this.artery_interpolated, exp(-this.k5()*times));
+            if this.Dt < 0 % shift back to right
+                artery_interpolated1 = artery_interpolated_(1)*zeros(1, n);
+                artery_interpolated1(-this.Dt+1:end) = artery_interpolated_(1:n+this.Dt);
+            elseif this.Dt > 0 % shift back to left
+                artery_interpolated1 = artery_interpolated_(this.Dt+1:this.Dt+n);
+            else
+                artery_interpolated1 = artery_interpolated_(1:n);
+            end            
+            %artery_interpolated1 = artery_interpolated_(1:n);
             artery_interpolated1 = artery_interpolated1*auc0/trapz(artery_interpolated1);
-            a = this.model.sampleOnScannerFrames(artery_interpolated1, this.times_sampled);
+            artery_interpolated1 = artery_interpolated1(this.T+1:end);
+            avec = this.model.solutionOnScannerFrames(artery_interpolated1, this.times_sampled);            
+            
+            roibin = logical(this.roi);
+            a = copy(this.roi.fourdfp);
+            a.img = zeros([size(this.roi) length(avec)]);
+            for t = 1:length(avec)
+                img = zeros(size(this.roi), 'single');
+                img(roibin) = avec(t);
+                a.img(:,:,:,t) = img;
+            end
+            a.fileprefix = this.sessionData.aifsOnAtlas('typ', 'fp', 'tags', [this.blurTag this.regionTag]);
+            a = imagingType(ipr.typ, a);
         end
         function ks = buildKs(this, varargin)
             this = solve(this, varargin{:});
-            ks = [k1(this) k2(this) k3(this) k4(this) k5(this)];
-        end
-        function [k,sk] = k5(this, varargin)
-            [k,sk] = k5(this.strategy_, varargin{:});
-        end
-        function [K,sK] = Ks(this, varargin)
-            K = zeros(1,this.LENK);
-            sK = zeros(1,this.LENK);
-            [K(1),sK(1)] = K1(this.strategy_, varargin{:});
-            [K(2),sK(2)] = k2(this.strategy_, varargin{:});
-            [K(3),sK(3)] = k3(this.strategy_, varargin{:});
-            [K(4),sK(4)] = k4(this.strategy_, varargin{:});
-            [K(5),sK(5)] = k5(this.strategy_, varargin{:});
-        end
-        function [k,sk] = ks(this, varargin)
-            k = zeros(1,this.LENK);
-            sk = zeros(1,this.LENK);
-            [k(1),sk(1)] = k1(this.strategy_, varargin{:});
-            [k(2),sk(2)] = k2(this.strategy_, varargin{:});
-            [k(3),sk(3)] = k3(this.strategy_, varargin{:});
-            [k(4),sk(4)] = k4(this.strategy_, varargin{:});
-            [k(5),sk(5)] = k5(this.strategy_, varargin{:});
+            ks = [k1(this) k2(this) k3(this) k4(this) k5(this) k6(this)];
         end
         function fdg = checkSimulated(this, varargin)
             %% CHECKSIMULATED simulates tissue activity with passed and internal parameters without changing state.
@@ -160,6 +169,41 @@ classdef AugmentedNumericHuang1980 < handle & mlpet.AugmentedData & mlglucose.Hu
             ipr = ip.Results;  
             
             fdg = this.model.simulated(ipr.ks, 'v1', ipr.v1, 'aif', ipr.aif, 'Dt', this.Dt);
+        end
+        function [k,sk] = k5(this, varargin)
+            [k,sk] = k5(this.strategy_, varargin{:});
+        end
+        function [k,sk] = k6(this, varargin)
+            k = this.Dt;
+            sk = nan;
+        end
+        function ks_ = ks(this, varargin)
+            %% ks == [k1 k2 k3 k4 Delta Dt]
+            %  @param 'typ' is char, understood by imagingType.            
+            
+            ip = inputParser;
+            ip.KeepUnmatched = true;
+            addParameter(ip, 'typ', 'mlfourd.ImagingContext2', @ischar)
+            parse(ip, varargin{:})
+            ipr = ip.Results;
+            
+            k(1) = k1(this.strategy_, varargin{:});
+            k(2) = k2(this.strategy_, varargin{:});
+            k(3) = k3(this.strategy_, varargin{:});
+            k(4) = k4(this.strategy_, varargin{:});
+            k(5) = k5(this.strategy_, varargin{:});
+            k(6) = this.Dt;
+             
+            roibin = logical(this.roi);
+            ks_ = copy(this.roi.fourdfp);
+            ks_.img = zeros([size(this.roi) length(k)]);
+            for t = 1:length(k)
+                img = zeros(size(this.roi), 'single');
+                img(roibin) = k(t);
+                ks_.img(:,:,:,t) = img;
+            end
+            ks_.fileprefix = this.sessionData.fsOnAtlas('typ', 'fp', 'tags', [this.blurTag this.regionTag]);
+            ks_ = imagingType(ipr.typ, ks_);
         end
     end
     
@@ -206,7 +250,7 @@ classdef AugmentedNumericHuang1980 < handle & mlpet.AugmentedData & mlglucose.Hu
                     this.strategy_ = mlglucose.DispersedHuang1980SimulAnneal( ...
                         'context', this, varargin{:});
                 otherwise
-                    error('mlglucose:NotImplementedError', 'Huang1980.ipr.solver->%s', ipr.solver)
+                    error('mlglucose:NotImplementedError', 'AugmentedNumericHuang1980.ipr.solver->%s', ipr.solver)
             end
         end
  	end 

@@ -69,8 +69,8 @@ classdef DispersedNumericHuang1980 < handle & mlglucose.Huang1980
             % AIF            
             % Dt shifts the AIF in time:  Dt < 0 shifts left; Dt > 0 shifts right.
             
-            counting = ipr.devkit.buildCountingDevice();
-            Dt = mlglucose.DispersedNumericHuang1980.DTimeToShift(counting, scanner);
+            counting = ipr.devkit.buildCountingDevice(scanner);
+            Dt = counting.Dt;
             aif = makima(counting.times + Dt, counting.activityDensity(), 0:scanner.times(end));
             radm = counting.radMeasurements;
             
@@ -88,43 +88,6 @@ classdef DispersedNumericHuang1980 < handle & mlglucose.Huang1980
                 'roi', ipr.roi, ...
                 varargin{:});
         end
-        function Dt = DTimeToShift(varargin)
-            %% Dt by which to shift arterial to match diff(scanner):  Dt < 0 will shift left; Dt > 0 will shift right.
-            %  Adjusts for ipr.counter.datetime0 ~= ipr.scanner.datetime0.
-            
-            ip = inputParser;
-            addRequired(ip, 'counter')
-            addRequired(ip, 'scanner')
-            parse(ip, varargin{:})
-            ipr = ip.Results;
-            
-            t_c        = asrow(ipr.counter.times);
-            activity_c = asrow(ipr.counter.activityDensity());
-            t_s        = asrow(ipr.scanner.timesMid);
-            activity_s = asrow(ipr.scanner.imagingContext.fourdfp.img);
-            
-            unif_t = 0:max([t_c t_s]);
-            unif_activity_s = makima(t_s, activity_s, unif_t);
-            d_activity_s = diff(unif_activity_s); % uniformly sampled time-derivative
-            
-            % shift dcv in time to match inflow with dtac    
-            % use 0.1 of max since counting SNR >> 10 and idx_scanner ~ 1
-            [~,idx_c] = max(activity_c > 0.1*max(activity_c));
-            idx_c = idx_c - 1;
-            [~,idx_s] = max(d_activity_s > 0.1*max(d_activity_s));
-            
-            Dt = unif_t(idx_s) - t_c(idx_c); % Dt ~ -20
-            if Dt < -t_c(idx_c) 
-                warning('mlglucose:ValueError', ...
-                    'DispersedNumericHuang1980.DTimeToShift.Dt -> %g; forcing -> %g', Dt, -t_c(idx_c))
-                Dt = -t_c(idx_c);
-            end
-            if Dt > 0
-                warning('mlglucose:ValueError', ...
-                    'DispersedNumericHuang1980.DTimeToShift.Dt -> %g; forcing -> %g', Dt, -t_c(idx_c))
-                Dt = 0;
-            end
-        end
     end
 
 	methods 
@@ -134,15 +97,6 @@ classdef DispersedNumericHuang1980 < handle & mlglucose.Huang1980
         end
         function [k,sk] = k5(this, varargin)
             [k,sk] = k5(this.strategy_, varargin{:});
-        end
-        function [K,sK] = Ks(this, varargin)
-            K = zeros(1,this.LENK);
-            sK = zeros(1,this.LENK);
-            [K(1),sK(1)] = K1(this.strategy_, varargin{:});
-            [K(2),sK(2)] = k2(this.strategy_, varargin{:});
-            [K(3),sK(3)] = k3(this.strategy_, varargin{:});
-            [K(4),sK(4)] = k4(this.strategy_, varargin{:});
-            [K(5),sK(5)] = k5(this.strategy_, varargin{:});
         end
         function [k,sk] = ks(this, varargin)
             k = zeros(1,this.LENK);
