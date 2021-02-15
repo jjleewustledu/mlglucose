@@ -52,6 +52,9 @@ classdef DispersedHuang1980Model < mlpet.TracerKineticsModel
         end 
         function qs   = solution(ks, v1, artery_interpolated)
             %  @param artery_interpolated is uniformly sampled at high sampling freq. starting at time = 0.
+
+            RR = mlraichle.RaichleRegistry.instance();
+            tBuffer = RR.tBuffer;
             
             k1 = ks(1);
             k2 = ks(2);
@@ -60,7 +63,8 @@ classdef DispersedHuang1980Model < mlpet.TracerKineticsModel
             Delta = ks(5);
             scale = 1;            
             n = length(artery_interpolated);
-            times = 0:1:n-1;
+            times0 = 0:1:n-1;
+            times = times0 - tBuffer;
             
             % use Delta
             auc0 = trapz(artery_interpolated);
@@ -81,7 +85,8 @@ classdef DispersedHuang1980Model < mlpet.TracerKineticsModel
             conv3 =                 conva -                convb;
             q2 = (k1 / bminusa)      * conv2;
             q3 = (k3 * k1 / bminusa) * conv3;
-            qs = v1 * (artery_interpolated1 + scale * (q2 + q3));            
+            qs = v1 * (artery_interpolated1 + scale * (q2 + q3)); 
+            qs = qs(tBuffer+1:n);
         end 
     end
 

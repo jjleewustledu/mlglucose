@@ -94,6 +94,9 @@ classdef DispersedNumericHuang1980 < handle & mlglucose.Huang1980
         function ks = buildKs(this, varargin)
             this = solve(this, varargin{:});
             ks = [k1(this) k2(this) k3(this) k4(this) k5(this)];
+        function g = get.artery_sampled(this)
+            g = this.model.solutionOnScannerFrames( ...
+                this.artery_interpolated(this.tBuffer+1:end), this.times_sampled);
         end
         function [k,sk] = k5(this, varargin)
             [k,sk] = k5(this.strategy_, varargin{:});
