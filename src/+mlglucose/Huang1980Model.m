@@ -127,6 +127,16 @@ classdef Huang1980Model < mlpet.TracerKineticsModel
             
             logp = sum(-log(Sigma) - 0.5*log(2*pi) - 0.5*Z.^2); % scalar
         end 
+        function loss = loss_function(ks, v1, artery_interpolated, times_sampled, measurement, ~)
+            import mlglucose.Huang1980Model.sampled            
+            estimation  = sampled(ks, v1, artery_interpolated, times_sampled);
+            measurement = measurement(1:length(estimation));
+            positive    = measurement > 0.05*max(measurement);
+            eoverm      = estimation(positive)./measurement(positive);            
+            Q           = mean(abs(1 - eoverm));
+            %Q           = sum((1 - eoverm).^2);
+            loss        = 0.5*Q; %/sigma0^2; % + sum(log(sigma0*measurement)); % sigma ~ sigma0*measurement
+        end
         function m    = preferredMap()
             %% init from Huang's table 1
             m = containers.Map;
@@ -140,8 +150,9 @@ classdef Huang1980Model < mlpet.TracerKineticsModel
             %  @param times_sampled are samples scheduled by the time-resolved PET reconstruction
             
             import mlglucose.Huang1980Model.solution  
+            import mlpet.TracerKineticsModel.solutionOnScannerFrames 
             qs = solution(ks, v1, artery_interpolated);
-            qs = qs(round(times_sampled - times_sampled(1) + 1));
+            qs = solutionOnScannerFrames(qs, times_sampled);
         end
         function loss = simulanneal_objective(ks, v1, artery_interpolated, times_sampled, qs0, sigma0)
             import mlglucose.Huang1980Model.sampled          

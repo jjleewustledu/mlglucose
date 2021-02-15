@@ -9,17 +9,6 @@ classdef Huang1980SimulAnneal < mlpet.TracerSimulAnneal & mlglucose.Huang1980Str
     properties
         v1 % blood volume fraction
     end
-    
-    methods (Static)
-        function loss = loss_function(ks, v1, artery_interpolated, times_sampled, measurement, sigma0)
-            import mlglucose.Huang1980Model.sampled            
-            estimation  = sampled(ks, v1, artery_interpolated, times_sampled);
-            positive    = measurement > 0.05*max(measurement);
-            eoverm      = estimation(positive)./measurement(positive);
-            Q           = sum((1 - eoverm).^2);
-            loss        = 0.5*Q/sigma0^2; % + sum(log(sigma0*measurement)); % sigma ~ sigma0*measurement
-        end
-    end
 
 	methods        
  		function this = Huang1980SimulAnneal(varargin)
@@ -35,20 +24,6 @@ classdef Huang1980SimulAnneal < mlpet.TracerSimulAnneal & mlglucose.Huang1980Str
             this.v1 = this.model.v1;
         end
         
-        function disp(this)
-            fprintf('\n')
-            fprintf(class(this))
-            if isempty(this.results_)
-                return
-            end
-            fprintf('initial ks0: '); disp(this.results_.ks0)
-            fprintf('est.     ks: '); disp(this.results_.ks)
-            fprintf('        sse: '); disp(this.results_.sse)
-            fprintf('   exitflag: '); disp(this.results_.exitflag)
-            disp(this.results_.output)
-            disp(this.results_.output.rngstate)
-            disp(this.results_.output.temperature)
-        end
         function fprintfModel(this)
             fprintf('Simulated Annealing:\n');
             for ky = 1:length(this.ks)
@@ -76,7 +51,10 @@ classdef Huang1980SimulAnneal < mlpet.TracerSimulAnneal & mlglucose.Huang1980Str
         end    
         function [k,sk] = k4(this, varargin)
             [k,sk] = find_result(this, 'k4');
-        end        
+        end          
+        function [k,sk] = k5(this, varargin)
+            [k,sk] = find_result(this, 'k5');
+        end  
         function h = plot(this, varargin)
             ip = inputParser;
             ip.KeepUnmatched = true;
@@ -106,13 +84,12 @@ classdef Huang1980SimulAnneal < mlpet.TracerSimulAnneal & mlglucose.Huang1980Str
             annotation('textbox', [.175 .25 .3 .3], 'String', sprintfModel(this), 'FitBoxToText', 'on', 'FontSize', 7, 'LineStyle', 'none')
             title('Huang1980SimulAnneal.plot()')
         end 
-        function        save(this)
-            save([this.fileprefix '.mat'], this);
-        end
-        function        saveas(this, fn)
-            save(fn, this);
-        end
         function this = solve(this, varargin)
+            ip = inputParser;
+            addRequired(ip, 'loss_function', @(x) isa(x, 'function_handle'))
+            parse(ip, varargin{:})
+            ipr = ip.Results;
+            
             options_fmincon = optimoptions('fmincon', ...
                 'FunctionTolerance', 1e-9, ...
                 'OptimalityTolerance', 1e-9);
@@ -136,7 +113,7 @@ classdef Huang1980SimulAnneal < mlpet.TracerSimulAnneal & mlglucose.Huang1980Str
                     'TemperatureFcn', 'temperatureexp');
             end
  			[ks_,sse,exitflag,output] = simulannealbnd( ...
-                @(ks__) mlglucose.Huang1980SimulAnneal.loss_function( ...
+                @(ks__) ipr.loss_function( ...
                        ks__, double(this.v1), this.artery_interpolated, this.times_sampled, double(this.Measurement), this.sigma0), ...
                 this.ks0, this.ks_lower, this.ks_upper, options); 
             

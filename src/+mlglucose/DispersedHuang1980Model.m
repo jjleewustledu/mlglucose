@@ -17,19 +17,24 @@ classdef DispersedHuang1980Model < mlpet.TracerKineticsModel
     end
     
     methods (Static) 
-        function logp = log_likelihood(Z, Sigma)
-            %% for Huang1980HMC
-            
-            logp = sum(-log(Sigma) - 0.5*log(2*pi) - 0.5*Z.^2); % scalar
-        end 
+        function loss = loss_function(ks, v1, artery_interpolated, times_sampled, measurement, ~)
+            import mlglucose.DispersedHuang1980Model.sampled            
+            estimation  = sampled(ks, v1, artery_interpolated, times_sampled);
+            measurement = measurement(1:length(estimation));
+            positive    = measurement > 0.05*max(measurement);
+            eoverm      = estimation(positive)./measurement(positive);            
+            Q           = mean(abs(1 - eoverm));
+            %Q           = sum((1 - eoverm).^2);
+            loss        = 0.5*Q; %/sigma0^2; % + sum(log(sigma0*measurement)); % sigma ~ sigma0*measurement
+        end
         function m    = preferredMap()
             %% init from Huang's table 1
             m = containers.Map;
-            m('k1') = struct('min',  eps, 'max',  0.5,   'init', 0.048,   'sigma', 0.0048);
-            m('k2') = struct('min',  eps, 'max',  0.02,  'init', 0.0022,  'sigma', 0.0022);
-            m('k3') = struct('min',  eps, 'max',  0.01,  'init', 0.001,   'sigma', 0.0001);
-            m('k4') = struct('min',  eps, 'max',  0.001, 'init', 0.00011, 'sigma', 0.00011);
-            m('k5') = struct('min',  0.1, 'max', 10,     'init', 1,       'sigma', 0.05);
+            m('k1') = struct('min', eps,  'max',  0.5,   'init', 0.048,   'sigma', 0.0048);
+            m('k2') = struct('min', eps,  'max',  0.02,  'init', 0.0022,  'sigma', 0.0022);
+            m('k3') = struct('min', eps,  'max',  0.01,  'init', 0.001,   'sigma', 0.0001);
+            m('k4') = struct('min', eps,  'max',  0.001, 'init', 0.00011, 'sigma', 0.00011);
+            m('k5') = struct('min', 0.01, 'max',  1,     'init', 1,       'sigma', 0.05);
         end
         function qs   = sampled(ks, v1, artery_interpolated, times_sampled)
             %  @param artery_interpolated is uniformly sampled at high sampling freq.
