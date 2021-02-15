@@ -41,7 +41,7 @@ classdef DispersedHuang1980Model < mlpet.TracerKineticsModel
             %  @param times_sampled are samples scheduled by the time-resolved PET reconstruction
             
             import mlglucose.DispersedHuang1980Model.solution 
-            import mlglucose.DispersedHuang1980Model.solutionOnScannerFrames  
+            import mlpet.TracerKineticsModel.solutionOnScannerFrames  
             qs = solution(ks, v1, artery_interpolated);
             qs = solutionOnScannerFrames(qs, times_sampled);
         end

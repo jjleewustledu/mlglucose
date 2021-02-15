@@ -108,11 +108,7 @@ classdef Huang1980 < handle & mlpet.TracerKineticsStrategy
         function ks = buildKs(this, varargin)
             this = solve(this, varargin{:});
             ks = [k1(this) k2(this) k3(this) k4(this)];
-        end
-        function buildQC(~, varargin)
-            return
-        end
-        
+        end        
         function c = chi(this, varargin)
             %  @return 1/s
             
