@@ -1,114 +1,102 @@
-classdef DispersedNumericHuang1980 < handle & mlglucose.Huang1980
-	%% DISPERSEDNUMERICHUANG1980 
+classdef DispersedNumericHuang1980 < handle & mlpet.AugmentedData & mlglucose.Huang1980
+	%% DISPERSEDNUMERICHUANG1980  
 
 	%  $Revision$
- 	%  was created 29-Apr-2020 23:31:01 by jjlee,
+ 	%  was created 04-Jan-2021 20:38:13 by jjlee,
  	%  last modified $LastChangedDate$ and placed into repository /Users/jjlee/MATLAB-Drive/mlglucose/src/+mlglucose.
- 	%% It was developed on Matlab 9.7.0.1319299 (R2019b) Update 5 for MACI64.  Copyright 2020 John Joowon Lee.
- 	
+ 	%% It was developed on Matlab 9.9.0.1538559 (R2020b) Update 3 for MACI64.  Copyright 2021 John Joowon Lee.
+ 	 	
+    
     properties (Constant)
-        LENK = 5
+        LENK = 5        
+    end
+    
+    properties (Dependent)
+        artery_sampled
+        Delta
+    end
+    
+    properties 
+        Dt % time-shift for AIF; Dt < 0 shifts backwards in time.
     end
     
     methods (Static)
-        function [this,fdg,aif] = createFromDeviceKit(devkit, varargin)
+        function [this,tac_,aif_] = createFromDeviceKit(devkit, varargin)
             %% adjusts AIF timings for coincidence of inflow with tissue activity from scanner
             %  @param required devkit is mlpet.IDeviceKit.
-            %  @param fdg is numeric, default from devkit.
-            %  @param roi ...
+            %  @param required scanner is an mlpet.AbstractDevice.
+            %  @param required arterial is an mlpet.AbstractDevice.
             %  @param solver is in {'nest' 'simulanneal' 'hmc' 'lm' 'bfgs'}, default := 'simulanneal'.
-            %  @param cbv is numeric or understood by mlfourd.ImagingContext2.
-            %  @param blurFdg := {[], 0, 4.3, ...}                       
-            %  @param map, default := mlglucose.Huang1980Model.preferredMap().
-            %  @param times_sampled non-uniformly scheduled by the time-resolved PET reconstruction.
-            %  @param artery_interpolated, default from devkit.
-            %  @param glc is numeric, default from devkit.
-            %  @param hct is numeric, default from devkit.
-            %  @param LC is numeric, default from mloxygen.Raichle1983Model
+            %  @param roi is mlfourd.ImagingContext2.
+            %  @param cbv is mlfourd.ImagingContext2.
+            %  @param LC is numeric, default from mlglucose.DispersedHuang1980Model.
             %  @param sigma0, default from mloptimization.SimulatedAnnealing.
             %  @param fileprefix, default from devkit.
             %  @return this.
-            %  @return fdg, blurred by ipr.blurFdg.
-            %  @return aif.
+            %  @return tac_, blurred by ipr.blurFdg.
+            %  @return aif_.
+            
+            import mlglucose.DispersedNumericHuang1980
+            import mlpet.AugmentedData.mixTacAif
+            import mlpet.AugmentedData.mix
+            import mlglucose.Huang1980
             
             ip = inputParser;
             ip.KeepUnmatched = true;
             addRequired(ip, 'devkit', @(x) isa(x, 'mlpet.IDeviceKit'))
-            addParameter(ip, 'fdg', [], @isnumeric)
-            addParameter(ip, 'roi', 'brain_222.4dfp.hdr')
-            addParameter(ip, 'cbv', [])
-            addParameter(ip, 'blurFdg', 4.3, @isnumeric)
+            addParameter(ip, 'scanner', [], @(x) isa(x, 'mlpet.AbstractDevice'))
+            addParameter(ip, 'arterial', [], @(x) isa(x, 'mlpet.AbstractDevice'))          
+            addParameter(ip, 'roi', [], @(x) isa(x, 'mlfourd.ImagingContext2'))
+            addParameter(ip, 'cbv', [], @(x) isa(x, 'mlfourd.ImagingContext2'))
             parse(ip, devkit, varargin{:})
             ipr = ip.Results;
             
-            % prepare atlas data
+            [tac_,timesMid_,aif_,Dt] = mixTacAif(devkit, varargin{:});
             
-            sesd = ipr.devkit.sessionData;
-            sesd.jitOn222(sesd.wmparc1OnAtlas())
-            sesd.jitOn222(sesd.fdgOnAtlas())
+            % v1              
+
+            v1 = ipr.cbv * 0.0105;
+            v1 = v1.volumeAveraged(ipr.roi);
+            v1_ = v1.fourdfp.img;
             
-            % scanner provides calibrations, ancillary data
+            %
             
-            ipr.roi = mlfourd.ImagingContext2(ipr.roi);
-            roibin = ipr.roi.binarized();            
-            scanner = ipr.devkit.buildScannerDevice();
-            scanner = scanner.blurred(ipr.blurFdg);
-            scanner = scanner.volumeAveraged(roibin);
-            fdg = scanner.activityDensity(); % calibrated, decaying
+            glc_ = Huang1980.glcFromRadMeasurements(ipr.arterial.radMeasurements);
+            hct_ = Huang1980.hctFromRadMeasurements(ipr.arterial.radMeasurements);
+            fp = sprintf('mlglucose_DispersedNumericHuang1980_createFromDeviceKit_dt%s', datestr(now, 'yyyymmddHHMMSS'));    
             
-            % v1
-            
-            fp = sprintf('mlglucose_DispersedHuang1980_createFromDeviceKit_dt%s', datestr(now, 'yyyymmddHHMMSS'));  
-            if isnumeric(ipr.cbv)
-                v1 = 0.0105*ipr.cbv;
-            else
-                v1 = mlfourd.ImagingContext2(ipr.cbv) .* 0.0105;
-                v1 = v1.volumeAveraged(roibin);
-            end
-            
-            % AIF            
-            % Dt shifts the AIF in time:  Dt < 0 shifts left; Dt > 0 shifts right.
-            
-            counting = ipr.devkit.buildCountingDevice(scanner);
-            Dt = counting.Dt;
-            aif = makima(counting.times + Dt, counting.activityDensity(), 0:scanner.times(end));
-            radm = counting.radMeasurements;
-            
-            this = mlglucose.DispersedNumericHuang1980( ...
-                'devkit', devkit, ...
-                'fdg', fdg, ...
+            this = DispersedNumericHuang1980( ...
+                'fdg', tac_, ...
                 'solver', 'simulanneal', ...
-                'v1', v1, ...
-                'times_sampled', scanner.timesMid, ...
-                'artery_interpolated', aif, ...
+                'devkit', ipr.devkit, ...
                 'Dt', Dt, ...
-                'glc', mlglucose.Huang1980.glcFromRadMeasurements(radm), ...
-                'hct', mlglucose.Huang1980.hctFromRadMeasurements(radm), ...
+                'times_sampled', timesMid_, ...
+                'artery_interpolated', aif_, ...
+                'v1', v1_, ...
+                'glc', glc_, ...
+                'hct', hct_, ...
                 'fileprefix', fp, ...
-                'roi', ipr.roi, ...
                 varargin{:});
         end
     end
-
-	methods 
-        function ks = buildKs(this, varargin)
-            this = solve(this, varargin{:});
-            ks = [k1(this) k2(this) k3(this) k4(this) k5(this)];
+    
+    methods
+        
+        %% GET
+        
         function g = get.artery_sampled(this)
             g = this.model.solutionOnScannerFrames( ...
                 this.artery_interpolated(this.tBuffer+1:end), this.times_sampled);
         end
-        function [k,sk] = k5(this, varargin)
-            [k,sk] = k5(this.strategy_, varargin{:});
+        function g = get.Delta(this)
+            g = this.k5();
         end
-        function [k,sk] = ks(this, varargin)
-            k = zeros(1,this.LENK);
-            sk = zeros(1,this.LENK);
-            [k(1),sk(1)] = k1(this.strategy_, varargin{:});
-            [k(2),sk(2)] = k2(this.strategy_, varargin{:});
-            [k(3),sk(3)] = k3(this.strategy_, varargin{:});
-            [k(4),sk(4)] = k4(this.strategy_, varargin{:});
-            [k(5),sk(5)] = k5(this.strategy_, varargin{:});
+        
+        %%
+        
+        function ks = buildKs(this, varargin)
+            this = solve(this, varargin{:});
+            ks = [k1(this) k2(this) k3(this) k4(this) k5(this) k6(this)];
         end
         function fdg = checkSimulated(this, varargin)
             %% CHECKSIMULATED simulates tissue activity with passed and internal parameters without changing state.
@@ -126,22 +114,59 @@ classdef DispersedNumericHuang1980 < handle & mlglucose.Huang1980
             
             fdg = this.model.simulated(ipr.ks, 'v1', ipr.v1, 'aif', ipr.aif, 'Dt', this.Dt);
         end
-        
+        function [k,sk] = k5(this, varargin)
+            [k,sk] = k5(this.strategy_, varargin{:});
+        end
+        function [k,sk] = k6(this, varargin)
+            k = this.Dt;
+            sk = nan;
+        end
+        function ks_ = ks(this, varargin)
+            %% ks == [k1 k2 k3 k4 Delta Dt]
+            %  @param 'typ' is char, understood by imagingType.            
+            
+            ip = inputParser;
+            ip.KeepUnmatched = true;
+            addParameter(ip, 'typ', 'mlfourd.ImagingContext2', @ischar)
+            parse(ip, varargin{:})
+            ipr = ip.Results;
+            
+            k(1) = k1(this.strategy_, varargin{:});
+            k(2) = k2(this.strategy_, varargin{:});
+            k(3) = k3(this.strategy_, varargin{:});
+            k(4) = k4(this.strategy_, varargin{:});
+            k(5) = k5(this.strategy_, varargin{:});
+            k(6) = k6(this);
+             
+            roibin = logical(this.roi);
+            ks_ = copy(this.roi.fourdfp);
+            ks_.img = zeros([size(this.roi) length(k)]);
+            for t = 1:length(k)
+                img = zeros(size(this.roi), 'single');
+                img(roibin) = k(t);
+                ks_.img(:,:,:,t) = img;
+            end
+            ks_.fileprefix = this.sessionData.ksOnAtlas('typ', 'fp', 'tags', [this.blurTag this.regionTag]);
+            ks_ = imagingType(ipr.typ, ks_);
+        end
+    end
+    
+    %% PROTECTED
+
+	methods (Access = protected)
  		function this = DispersedNumericHuang1980(varargin)
- 			%% DISPERSEDNUMERICHUANG1980   
+ 			%% DISPERSEDNUMERICHUANG1980
             %  @param fdg is numeric.
             %  @param solver is in {'nest' 'simulanneal' 'hmc' 'lm' 'bfgs'}. 
             %  @param devkit is mlpet.IDeviceKit.          
-            %  @param Dt is numeric, s of time-shifting for AIF.
-            %  @param times_sampled is numeric.
-            %  @param artery_interpolated is numeric.  
+            %  @param Dt is numeric, s of time-shifting for AIF.   
             %  
             %  for mlglucose.DispersedHuang1980Model: 
             %  @param v1
             %  @param glc
             %  @param hct
             %  @param LC
-            %  @param map is a containers.Map.  Default := this.preferredMap.
+            %  @param map is a containers.Map.  Default := DispersedHuang1980Model.preferredMap.
             %  @param times_sampled for scanner is typically not uniform.
             %  @param artery_interpolated must be uniformly interpolated.
             %
@@ -158,6 +183,7 @@ classdef DispersedNumericHuang1980 < handle & mlglucose.Huang1980
             ip.KeepUnmatched = true;
             addParameter(ip, 'fdg', [], @(x) isnumeric(x))
             addParameter(ip, 'solver', 'simulanneal', @ischar)
+            addParameter(ip, 'Dt', 0, @isscalar)
             parse(ip, varargin{:})
             ipr = ip.Results;
                         
@@ -167,8 +193,9 @@ classdef DispersedNumericHuang1980 < handle & mlglucose.Huang1980
                     this.strategy_ = mlglucose.DispersedHuang1980SimulAnneal( ...
                         'context', this, varargin{:});
                 otherwise
-                    error('mlglucose:NotImplementedError', 'Huang1980.ipr.solver->%s', ipr.solver)
+                    error('mlglucose:NotImplementedError', 'DispersedNumericHuang1980.ipr.solver->%s', ipr.solver)
             end
+            this.Dt = ipr.Dt;
         end
  	end 
 
