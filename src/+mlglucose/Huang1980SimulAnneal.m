@@ -57,32 +57,42 @@ classdef Huang1980SimulAnneal < mlpet.TracerSimulAnneal & mlglucose.Huang1980Str
         end  
         function h = plot(this, varargin)
             ip = inputParser;
-            ip.KeepUnmatched = true;
             addParameter(ip, 'showAif', true, @islogical)
-            addParameter(ip, 'xlim', [-20 1800], @isnumeric)            
+            addParameter(ip, 'xlim', [-30 1000], @isnumeric)            
             addParameter(ip, 'ylim', [], @isnumeric)
+            addParameter(ip, 'zoom', 4, @isnumeric)
             parse(ip, varargin{:})
             ipr = ip.Results;
+            this.zoom = ipr.zoom;            
             
-            aif = this.artery_interpolated;
+            RR = mlraichle.RaichleRegistry.instance();
+            tBuffer = RR.tBuffer;           
+            aif = this.dispersedAif(this.artery_interpolated);
             h = figure;
             times = this.times_sampled;
+            sampled = this.model.sampled(this.ks, this.v1, aif, times);
             if ipr.showAif
-                plot(times, this.Measurement, ':o', ...
-                    times, this.model.sampled(this.ks, this.v1, aif, times), '-', ...
-                    0:length(aif)-1, this.v1*aif, '--')                
-                legend('measurement', 'estimation', 'v1*aif')
+                plot(times, ipr.zoom*this.Measurement, ':o', ...
+                    times(1:length(sampled)), ipr.zoom*sampled, '-', ...
+                    -tBuffer:length(aif)-tBuffer-1, aif, '--')   
+                if ipr.zoom > 1
+                    leg_aif = sprintf('aif x%i', ipr.zoom);
+                else
+                    leg_aif = 'aif';
+                end
+                legend('measurement', 'estimation', leg_aif)
             else
-                plot(times, this.Measurement, 'o', ...
-                    times, this.model.sampled(this.ks, this.v1, aif, times), '-')                
+                plot(times, ipr.zoom*this.Measurement, 'o', ...
+                    times(1:length(sampled)), ipr.zoom*sampled, '-')                
                 legend('measurement', 'estimation')
             end
             if ~isempty(ipr.xlim); xlim(ipr.xlim); end
             if ~isempty(ipr.ylim); ylim(ipr.ylim); end
             xlabel('times / s')
             ylabel('activity / (Bq/mL)')
-            annotation('textbox', [.175 .25 .3 .3], 'String', sprintfModel(this), 'FitBoxToText', 'on', 'FontSize', 7, 'LineStyle', 'none')
-            title('Huang1980SimulAnneal.plot()')
+            annotation('textbox', [.175 .5 .3 .3], 'String', sprintfModel(this), 'FitBoxToText', 'on', 'FontSize', 7, 'LineStyle', 'none')
+            dbs = dbstack;
+            title(dbs(1).name)
         end 
         function this = solve(this, varargin)
             ip = inputParser;
