@@ -229,7 +229,7 @@ classdef Huang1980Model < mlpet.TracerKineticsModel
             Dt = ipr.ks(5);
             if Dt ~= 0
                 times = 0:length(ipr.aif)-1;
-                aif = pchip(times+Dt, ipr.aif, times);
+                aif = makima(times+Dt, ipr.aif, times);
             else
                 aif = ipr.aif;
             end

@@ -63,8 +63,7 @@ classdef DispersedHuang1980Model < mlpet.TracerKineticsModel
             Delta = ks(5);
             scale = 1;            
             n = length(artery_interpolated);
-            times0 = 0:1:n-1;
-            times = times0 - tBuffer;
+            times = 0:1:n-1;
             
             % use Delta
             auc0 = trapz(artery_interpolated);
@@ -137,7 +136,7 @@ classdef DispersedHuang1980Model < mlpet.TracerKineticsModel
             end
             if ipr.Dt ~= 0
                 times = 0:length(ipr.aif)-1;
-                aif = pchip(times - ipr.Dt, ipr.aif, times); % remove the delay Dt found by model
+                aif = makima(times - ipr.Dt, ipr.aif, times); % remove the delay Dt found by model
             else
                 aif = ipr.aif;
             end
