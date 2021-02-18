@@ -14,9 +14,6 @@ classdef DispersedNumericHuang1980 < handle & mlpet.AugmentedData & mlglucose.Hu
     properties (Dependent)
         artery_sampled
         Delta
-    end
-    
-    properties 
         Dt % time-shift for AIF; Dt < 0 shifts backwards in time.
     end
     
@@ -91,6 +88,9 @@ classdef DispersedNumericHuang1980 < handle & mlpet.AugmentedData & mlglucose.Hu
         function g = get.Delta(this)
             g = this.k5();
         end
+        function g = get.Dt(this)
+            g = this.strategy_.Dt;
+        end
         
         %%
         
@@ -158,8 +158,7 @@ classdef DispersedNumericHuang1980 < handle & mlpet.AugmentedData & mlglucose.Hu
  			%% DISPERSEDNUMERICHUANG1980
             %  @param fdg is numeric.
             %  @param solver is in {'nest' 'simulanneal' 'hmc' 'lm' 'bfgs'}. 
-            %  @param devkit is mlpet.IDeviceKit.          
-            %  @param Dt is numeric, s of time-shifting for AIF.   
+            %  @param devkit is mlpet.IDeviceKit.            
             %  
             %  for mlglucose.DispersedHuang1980Model: 
             %  @param v1
@@ -183,7 +182,6 @@ classdef DispersedNumericHuang1980 < handle & mlpet.AugmentedData & mlglucose.Hu
             ip.KeepUnmatched = true;
             addParameter(ip, 'fdg', [], @(x) isnumeric(x))
             addParameter(ip, 'solver', 'simulanneal', @ischar)
-            addParameter(ip, 'Dt', 0, @isscalar)
             parse(ip, varargin{:})
             ipr = ip.Results;
                         
@@ -195,7 +193,6 @@ classdef DispersedNumericHuang1980 < handle & mlpet.AugmentedData & mlglucose.Hu
                 otherwise
                     error('mlglucose:NotImplementedError', 'DispersedNumericHuang1980.ipr.solver->%s', ipr.solver)
             end
-            this.Dt = ipr.Dt;
         end
  	end 
 
