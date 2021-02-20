@@ -64,6 +64,7 @@ classdef DispersedHuang1980Model < mlpet.TracerKineticsModel
             scale = 1;            
             n = length(artery_interpolated);
             times = 0:1:n-1;
+            timesb = times; % - tBuffer;
             
             % use Delta
             auc0 = trapz(artery_interpolated);
@@ -76,8 +77,8 @@ classdef DispersedHuang1980Model < mlpet.TracerKineticsModel
             bminusa = sqrt(k234^2 - 4 * k2 * k4);
             alpha = 0.5 * (k234 - bminusa);
             beta  = 0.5 * (k234 + bminusa);   
-            conva = conv(exp(-alpha .* times), artery_interpolated1);
-            convb = conv(exp(-beta .* times), artery_interpolated1);
+            conva = conv(exp(-alpha .* timesb), artery_interpolated1);
+            convb = conv(exp(-beta .* timesb), artery_interpolated1);
             conva = conva(1:n);
             convb = convb(1:n);
             conv2 = (k4 - alpha) .* conva + (beta - k4) .* convb;
