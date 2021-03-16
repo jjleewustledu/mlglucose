@@ -8,7 +8,7 @@ classdef DispersedNumericHuang1980 < handle & mlpet.AugmentedData & mlglucose.Hu
  	 	
     
     properties (Constant)
-        LENK = 5        
+        LENK = 7        
     end
     
     properties (Dependent)
@@ -96,7 +96,7 @@ classdef DispersedNumericHuang1980 < handle & mlpet.AugmentedData & mlglucose.Hu
         
         function ks = buildKs(this, varargin)
             this = solve(this, varargin{:});
-            ks = [k1(this) k2(this) k3(this) k4(this) k5(this) k6(this)];
+            ks = [k1(this) k2(this) k3(this) k4(this) k5(this) k6(this) loss(this)];
         end
         function fdg = checkSimulated(this, varargin)
             %% CHECKSIMULATED simulates tissue activity with passed and internal parameters without changing state.
@@ -122,7 +122,7 @@ classdef DispersedNumericHuang1980 < handle & mlpet.AugmentedData & mlglucose.Hu
             sk = nan;
         end
         function ks_ = ks(this, varargin)
-            %% ks == [k1 k2 k3 k4 Delta Dt]
+            %% ks == [k1 k2 k3 k4 Delta Dt loss]
             %  @param 'typ' is char, understood by imagingType.            
             
             ip = inputParser;
@@ -137,6 +137,7 @@ classdef DispersedNumericHuang1980 < handle & mlpet.AugmentedData & mlglucose.Hu
             k(4) = k4(this.strategy_, varargin{:});
             k(5) = k5(this.strategy_, varargin{:});
             k(6) = k6(this);
+            k(7) = loss(this);
              
             roibin = logical(this.roi);
             ks_ = copy(this.roi.fourdfp);

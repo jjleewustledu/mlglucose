@@ -25,7 +25,7 @@ classdef DispersedHuang1980Model < mlpet.TracerKineticsModel
             eoverm      = estimation(positive)./measurement(positive);            
             Q           = mean(abs(1 - eoverm));
             %Q           = sum((1 - eoverm).^2);
-            loss        = 0.5*Q; %/sigma0^2; % + sum(log(sigma0*measurement)); % sigma ~ sigma0*measurement
+            loss        = Q; % 0.5*Q/sigma0^2 + sum(log(sigma0*measurement)); % sigma ~ sigma0*measurement
         end
         function m    = preferredMap()
             %% init from Huang's table 1

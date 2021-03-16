@@ -30,7 +30,8 @@ classdef DispersedHuang1980SimulAnneal < mlglucose.Huang1980SimulAnneal
                 fprintf('\tk%i = %g\n', ky, this.ks(ky));
             end
             fprintf('\tDt = %g\n', this.Dt);
-            fprintf('\ttBuffer = %g\n', this.registry.tBuffer)   
+            fprintf('\ttBuffer = %g\n', this.registry.tBuffer)  
+            fprintf('\tloss = %g\n', this.loss())   
             fprintf('\tsigma0 = %g\n', this.sigma0);
             fprintf('\tv1 = %g\n', this.v1);
             for ky = this.map.keys
@@ -43,7 +44,8 @@ classdef DispersedHuang1980SimulAnneal < mlglucose.Huang1980SimulAnneal
                 s = [s sprintf('\tk%i = %g\n', ky, this.ks(ky))]; %#ok<AGROW>
             end
             s = [s sprintf('\tDt = %g\n', this.Dt)];
-            s = [s sprintf('\ttBuffer = %g\n', this.registry.tBuffer)];   
+            s = [s sprintf('\ttBuffer = %g\n', this.registry.tBuffer)];  
+            s = [s sprintf('\tloss = %g\n', this.loss())];   
             s = [s sprintf('\tsigma0 = %g\n', this.sigma0)];
             s = [s sprintf('\tv1 = %g\n', this.v1)];
             for ky = this.map.keys

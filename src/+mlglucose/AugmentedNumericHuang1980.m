@@ -31,7 +31,6 @@ classdef AugmentedNumericHuang1980 < handle & mlglucose.DispersedNumericHuang198
             %  @return aif_.
             
             import mlglucose.AugmentedNumericHuang1980
-            import mlpet.AugmentedData.mixTacAif
             import mlpet.AugmentedData.mixTacsAifs
             import mlpet.AugmentedData.mix
             import mlglucose.Huang1980
@@ -66,7 +65,7 @@ classdef AugmentedNumericHuang1980 < handle & mlglucose.DispersedNumericHuang198
             v12 = v12.fourdfp.img;
             v1_ = mix(v1, v12, ipr.fracMixing);
             
-            %
+            % glc, hct
             
             glc = Huang1980.glcFromRadMeasurements(ipr.arterial.radMeasurements);
             glc2 = Huang1980.glcFromRadMeasurements(ipr.arterial2.radMeasurements);
@@ -74,6 +73,9 @@ classdef AugmentedNumericHuang1980 < handle & mlglucose.DispersedNumericHuang198
             hct = Huang1980.hctFromRadMeasurements(ipr.arterial.radMeasurements);
             hct2 = Huang1980.hctFromRadMeasurements(ipr.arterial2.radMeasurements);
             hct_ = mix(hct, hct2, ipr.fracMixing);
+            
+            %
+            
             fp = sprintf('mlglucose_AugmentedNumericHuang1980_createFromDeviceKit_dt%s', datestr(now, 'yyyymmddHHMMSS'));    
             
             this = AugmentedNumericHuang1980( ...

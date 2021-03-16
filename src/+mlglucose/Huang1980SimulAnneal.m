@@ -71,20 +71,21 @@ classdef Huang1980SimulAnneal < mlpet.TracerSimulAnneal & mlglucose.Huang1980Str
             h = figure;
             times = this.times_sampled;
             sampled = this.model.sampled(this.ks, this.v1, aif, times);
+            
+            if ipr.zoom > 1
+                leg_meas = sprintf('measurement x%i', ipr.zoom);
+            else
+                leg_meas = 'measurement';
+            end
             if ipr.showAif
                 plot(times, ipr.zoom*this.Measurement, ':o', ...
                     times(1:length(sampled)), ipr.zoom*sampled, '-', ...
                     -tBuffer:length(aif)-tBuffer-1, aif, '--')   
-                if ipr.zoom > 1
-                    leg_aif = sprintf('aif x%i', ipr.zoom);
-                else
-                    leg_aif = 'aif';
-                end
-                legend('measurement', 'estimation', leg_aif)
+                legend(leg_meas, 'estimation', 'aif')
             else
                 plot(times, ipr.zoom*this.Measurement, 'o', ...
                     times(1:length(sampled)), ipr.zoom*sampled, '-')                
-                legend('measurement', 'estimation')
+                legend(leg_meas, 'estimation')
             end
             if ~isempty(ipr.xlim); xlim(ipr.xlim); end
             if ~isempty(ipr.ylim); ylim(ipr.ylim); end
@@ -124,7 +125,7 @@ classdef Huang1980SimulAnneal < mlpet.TracerSimulAnneal & mlglucose.Huang1980Str
             end
  			[ks_,sse,exitflag,output] = simulannealbnd( ...
                 @(ks__) ipr.loss_function( ...
-                       ks__, double(this.v1), this.artery_interpolated, this.times_sampled, double(this.Measurement), this.sigma0), ...
+                       ks__, double(this.v1), this.artery_interpolated, this.times_sampled, double(this.Measurement)), ...
                 this.ks0, this.ks_lower, this.ks_upper, options); 
             
             this.results_ = struct('ks0', this.ks0, 'ks', ks_, 'sse', sse, 'exitflag', exitflag, 'output', output); 
