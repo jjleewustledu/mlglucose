@@ -44,8 +44,8 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
             % prepare atlas data
             
             sesd = ipr.devkit.sessionData;
-            sesd.jitOn222(sesd.wmparc1OnAtlas())
-            sesd.jitOn222(sesd.fdgOnAtlas())
+            sesd.jitOn111(sesd.wmparc1OnAtlas())
+            sesd.jitOn111(sesd.fdgOnAtlas())
             
             % scanner provides calibrations, ancillary data
             
