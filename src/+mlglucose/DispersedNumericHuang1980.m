@@ -30,7 +30,7 @@ classdef DispersedNumericHuang1980 < handle & mlpet.AugmentedData & mlglucose.Hu
             %  @param sigma0, default from mloptimization.SimulatedAnnealing.
             %  @param fileprefix, default from devkit.
             %  @return this.
-            %  @return tac_, blurred by ipr.blurFdg.
+            %  @return tac_.
             %  @return aif_.
             
             import mlglucose.DispersedNumericHuang1980
