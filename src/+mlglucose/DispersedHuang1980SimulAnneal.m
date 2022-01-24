@@ -28,7 +28,7 @@ classdef DispersedHuang1980SimulAnneal < mlglucose.Huang1980SimulAnneal
             this.Dt = ipr.Dt;
             this.DtMixing = ipr.DtMixing;
             this.fracMixing = ipr.fracMixing;
-            this.registry = mlraichle.RaichleRegistry.instance();
+            this.registry = mlraichle.StudyRegistry.instance();
         end  
         
         function fprintfModel(this)

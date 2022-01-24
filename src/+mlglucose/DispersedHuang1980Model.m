@@ -53,7 +53,7 @@ classdef DispersedHuang1980Model < mlpet.TracerKineticsModel
         function qs   = solution(ks, v1, artery_interpolated)
             %  @param artery_interpolated is uniformly sampled at high sampling freq. starting at time = 0.
 
-            RR = mlraichle.RaichleRegistry.instance();
+            RR = mlraichle.StudyRegistry.instance();
             tBuffer = RR.tBuffer;
             
             k1 = ks(1);
