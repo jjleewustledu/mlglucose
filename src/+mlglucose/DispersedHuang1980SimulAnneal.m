@@ -10,7 +10,7 @@ classdef DispersedHuang1980SimulAnneal < mlglucose.Huang1980SimulAnneal
         Dt
         DtMixing
         fracMixing
-        registry
+        aifdata
     end
     
 	methods		  
@@ -28,7 +28,7 @@ classdef DispersedHuang1980SimulAnneal < mlglucose.Huang1980SimulAnneal
             this.Dt = ipr.Dt;
             this.DtMixing = ipr.DtMixing;
             this.fracMixing = ipr.fracMixing;
-            this.registry = mlraichle.StudyRegistry.instance();
+            this.aifdata = mlaif.AifData.instance();
         end  
         
         function fprintfModel(this)
@@ -37,7 +37,7 @@ classdef DispersedHuang1980SimulAnneal < mlglucose.Huang1980SimulAnneal
                 fprintf('\tk%i = %g\n', ky, this.ks(ky));
             end
             fprintf('\tDt = %g\n', this.Dt);
-            fprintf('\ttBuffer = %g\n', this.registry.tBuffer)  
+            fprintf('\ttBuffer = %g\n', this.aifdata.tBuffer)  
             fprintf('\tDtMixing = %g\n', this.DtMixing)
             fprintf('\tfracMixing = %g\n', this.fracMixing)
             fprintf('\tloss = %g\n', this.loss())   
@@ -53,7 +53,7 @@ classdef DispersedHuang1980SimulAnneal < mlglucose.Huang1980SimulAnneal
                 s = [s sprintf('\tk%i = %g\n', ky, this.ks(ky))]; %#ok<AGROW>
             end
             s = [s sprintf('\tDt = %g\n', this.Dt)];
-            s = [s sprintf('\ttBuffer = %g\n', this.registry.tBuffer)];  
+            s = [s sprintf('\ttBuffer = %g\n', this.aifdata.tBuffer)];  
             s = [s sprintf('\tDtMixing = %g\n', this.DtMixing)];
             s = [s sprintf('\tfracMixing = %g\n', this.fracMixing)];
             s = [s sprintf('\tloss = %g\n', this.loss())];   
