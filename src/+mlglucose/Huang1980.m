@@ -48,9 +48,9 @@ classdef Huang1980 < handle & mlpet.TracerKineticsStrategy
         function g = glcFromRadMeasurements(radm)
             %  @return mg/dL
             
-            tbl = radm.fromPamStone;
+            tbl = radm.laboratory;
             rows = tbl.Properties.RowNames;
-            select = strncmp(rows, 'glc FDG', 7);
+            select = contains(rows, 'glc');
             g = tbl.measurement(select);
             g = mean(g(find(g)), 'omitnan'); %#ok<FNDSB>
         end
@@ -88,7 +88,7 @@ classdef Huang1980 < handle & mlpet.TracerKineticsStrategy
             end
         end
         function h = hctFromRadMeasurements(radm)
-            h = radm.fromPamStone{'Hct', 'measurement'};
+            h = radm.laboratory{'Hct', 'measurement'};
             if h > 1
                 h = h/100;
             end

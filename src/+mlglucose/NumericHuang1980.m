@@ -98,7 +98,7 @@ classdef NumericHuang1980 < handle & mlglucose.Huang1980
             t_c        = asrow(ipr.counter.times);
             activity_c = asrow(ipr.counter.activityDensity());
             t_s        = asrow(ipr.scanner.timesMid);
-            activity_s = asrow(ipr.scanner.imagingContext.fourdfp.img);
+            activity_s = asrow(ipr.scanner.imagingContext.imagingFormat.img);
             
             unif_t = 0:max([t_c t_s]);
             unif_activity_s = pchip(t_s, activity_s, unif_t);

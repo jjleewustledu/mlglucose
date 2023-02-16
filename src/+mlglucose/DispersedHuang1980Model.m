@@ -34,7 +34,7 @@ classdef DispersedHuang1980Model < mlpet.TracerKineticsModel
             m('k2') = struct('min', eps,  'max',  0.02,  'init', 0.0022,  'sigma', 0.0022);
             m('k3') = struct('min', eps,  'max',  0.01,  'init', 0.001,   'sigma', 0.0001);
             m('k4') = struct('min', eps,  'max',  0.001, 'init', 0.00011, 'sigma', 0.00011);
-            m('k5') = struct('min', 0.01, 'max',  1,     'init', 1,       'sigma', 0.05);
+            m('k5') = struct('min', 0.02, 'max',  1,     'init', 0.1,     'sigma', 0.05); % Delta for arterial dispersion
         end
         function qs   = sampled(ks, v1, artery_interpolated, times_sampled)
             %  @param artery_interpolated is uniformly sampled at high sampling freq.
