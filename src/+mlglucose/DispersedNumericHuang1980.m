@@ -34,7 +34,7 @@ classdef DispersedNumericHuang1980 < handle & mlpet.AugmentedData & mlglucose.Hu
             %  @return aif_.
             
             import mlglucose.DispersedNumericHuang1980
-            import mlpet.AugmentedData.mixTacAif
+            import mlkinetics.ScannerKit.mixTacAif
             import mlglucose.Huang1980
             
             ip = inputParser;
@@ -349,7 +349,7 @@ classdef DispersedNumericHuang1980 < handle & mlpet.AugmentedData & mlglucose.Hu
 
  			this = this@mlglucose.Huang1980( ...
                 'model', mlglucose.DispersedHuang1980Model(varargin{:}), ...
-                varargin{:});	
+                varargin{:});
             
             ip = inputParser;
             ip.KeepUnmatched = true;
