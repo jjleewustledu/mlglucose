@@ -169,7 +169,7 @@ classdef ImagingHuang1980 < handle & matlab.mixin.Copyable
             end
             
             % decay-correct & remove calibrations
-            ic = scanner.decayCorrectLike(working_ifc);
+            ic = scanner.decayCorrectImaging(working_ifc);
             ic = ic ./ scanner.invEfficiencyf(sesd);
             ic.fileprefix = fileprefix0;
             this.prediction = ic;
