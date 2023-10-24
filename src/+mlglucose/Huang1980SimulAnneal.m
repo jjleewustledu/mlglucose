@@ -1,5 +1,6 @@
-classdef Huang1980SimulAnneal < mlpet.TracerSimulAnneal & mlglucose.Huang1980Strategy
+classdef Huang1980SimulAnneal < mlpet.TracerSimulAnneal
 	%% HUANG1980SIMULANNEAL operates on single voxels/regions.
+    %  mlglucose.Huang1980Strategy provides an abstract interface.
 
 	%  $Revision$
  	%  was created 03-Jan-2020 17:45:56 by jjlee,

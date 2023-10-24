@@ -1,4 +1,4 @@
-classdef Huang1980Nest < mlnest.Dynamics & mlglucose.Huang1980Strategy
+classdef Huang1980Nest < mlnest.Dynamics
 	%% HUANG1980NEST  
 
 	%  $Revision$

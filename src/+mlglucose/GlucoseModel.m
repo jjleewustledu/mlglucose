@@ -1,4 +1,4 @@
-classdef (Abstract) GlucoseModel < mlkinetics.KineticsModel
+classdef (Abstract) GlucoseModel < mlkinetics.KineticsModel_20190307
 	%% GLUCOSEMODEL  
 
 	%  $Revision$
@@ -27,7 +27,7 @@ classdef (Abstract) GlucoseModel < mlkinetics.KineticsModel
  			%% GLUCOSEMODEL
  			%  @param named blindedData is an mlglucose.BlindedData
             
-            this = this@mlkinetics.KineticsModel(varargin{:});            
+            this = this@mlkinetics.KineticsModel_20190307(varargin{:});            
             import mlpet.*;
             ip = inputParser;
             ip.KeepUnmatched = true;

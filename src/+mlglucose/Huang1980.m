@@ -1,4 +1,4 @@
-classdef Huang1980 < handle & mlpet.TracerKineticsStrategy
+classdef Huang1980 < handle & mlpet.TracerKinetics
 	%% HUANG1980 is the context to a strategy design pattern which implements:
     %  mlglucose.{Huang1980Nest, Huang1980SimulAnneal, Huang1980HMC, Huang1980LM, Huang1980BFGS}.
     %  For performance considerations, see also https://blogs.mathworks.com/loren/2012/03/26/considering-performance-in-object-oriented-matlab-code/
@@ -119,7 +119,7 @@ classdef Huang1980 < handle & mlpet.TracerKineticsStrategy
             %  @return umol/hg/min
             
             % [umol/mmol] [(mmol/L) / (mg/dL)] [L/dL] [dL/mL] [g/hg] [mL/g] == [umol/hg]
-            glc_ = this.glcConvertsion(this.model.glc, 'mg/dL', 'umol/hg'); 
+            glc_ = this.glcConversion(this.model.glc, 'mg/dL', 'umol/hg'); 
             r = 60*this.chi(varargin{:})*glc_/this.model.LC;
         end
         function t = ctxglc(~, varargin)
@@ -165,7 +165,7 @@ classdef Huang1980 < handle & mlpet.TracerKineticsStrategy
     
     methods (Access = protected)
         function this = Huang1980(varargin)  
-            this = this@mlpet.TracerKineticsStrategy(varargin{:});
+            this = this@mlpet.TracerKinetics(varargin{:});
         end
  	end 
 
