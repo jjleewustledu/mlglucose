@@ -13,7 +13,7 @@ classdef (Abstract) Huang1980Strategy
         map                  % containers.Map containing model params as structs with fields:  min, max, init
         model                %
         Measurement          % external data
-        results
+        product
         sigma0               % fraction of Measurement < 1
         times_sampled        % numeric times for Measurement; midpoints of frames for PET
         v1                   % blood volume fraction
