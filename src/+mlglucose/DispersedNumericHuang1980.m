@@ -145,7 +145,7 @@ classdef DispersedNumericHuang1980 < handle & mlpet.AugmentedData & mlglucose.Hu
             Nt = ceil(timesMid__(end));
             
             % arterialDevs calibrate & align arterial times-series to localized scanner time-series  
-            [a1, datetimePeak] = devkit.alignArterialToScanner( ...
+            [a1, datetimePeak] = devkit.alignArterialToReference( ...
                 ipr.arterial{1}, s, 'sameWorldline', false);
             Dt = a1.Dt;
             aif1 = a1.activityDensity();
